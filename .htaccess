@@ -1,0 +1,28 @@
+# DRE System (PHP) — Apache
+Options -Indexes
+DirectoryIndex index.html
+AddDefaultCharset UTF-8
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Todas as rotas /api/* vão pro roteador PHP
+  RewriteRule ^api/(.*)$ api/index.php?__route=$1 [QSA,L]
+  # Bloqueia acesso direto a código, config e storage
+  RewriteRule ^(app|storage)(/|$) - [F,L]
+  RewriteRule (^|/)\.(env|git) - [F,L]
+  RewriteRule \.(sql|md|lock)$ - [F,L]
+</IfModule>
+
+# Sem cache pra interface (evita tela velha depois de atualizar o sistema)
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|css)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+  Header always set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# Uploads de até 20 MB (se a hospedagem permitir sobrescrever via .htaccess)
+<IfModule mod_php.c>
+  php_value upload_max_filesize 20M
+  php_value post_max_size 22M
+</IfModule>

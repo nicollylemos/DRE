@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>OAF — Controle Financeiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<!-- ═══════════════════════ LOGIN ═══════════════════════ -->
+<div id="auth-screen" class="auth-screen hidden">
+  <div class="auth-card">
+    <img class="auth-logo" src="img/logo-oaf.png" onerror="this.onerror=null;this.src='img/logo-oaf.svg'" alt="OAF"/>
+    <h1>Controle Financeiro</h1>
+    <p class="auth-sub">Entre com seu usuário para continuar</p>
+
+    <form id="login-form" class="auth-form" autocomplete="on">
+      <label class="field"><span>Usuário</span><input type="text" id="login-user" autocomplete="username" required/></label>
+      <label class="field"><span>Senha</span><input type="password" id="login-pass" autocomplete="current-password" required/></label>
+      <button class="btn btn-navy btn-block" type="submit">Entrar</button>
+      <div class="form-error" id="login-error"></div>
+    </form>
+
+    <!-- Só aparece quando o banco ainda não tem nenhum usuário -->
+    <form id="setup-form" class="auth-form hidden">
+      <p class="auth-hint">Nenhum usuário cadastrado ainda. Crie o primeiro acesso — ele será o administrador.</p>
+      <label class="field"><span>Usuário</span><input type="text" id="setup-user" autocomplete="username" required/></label>
+      <label class="field"><span>Senha</span><input type="password" id="setup-pass" autocomplete="new-password" placeholder="mínimo 6 caracteres" required/></label>
+      <button class="btn btn-gold btn-block" type="submit">Criar acesso inicial</button>
+      <div class="form-error" id="setup-error"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════ APP ═══════════════════════ -->
+<div id="app" class="app hidden">
+
+  <aside class="sidebar">
+    <a class="side-brand" href="#lancamentos" title="OAF">OAF</a>
+    <nav class="side-nav" id="side-nav">
+      <a href="#lancamentos" class="side-btn" data-page="lancamentos" data-label="Lançamentos">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg>
+      </a>
+      <a href="#parceiros" class="side-btn" data-page="parceiros" data-label="Parceiros">
+        <svg viewBox="0 0 24 24"><path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/></svg>
+      </a>
+      <a href="#fornecedores" class="side-btn" data-page="fornecedores" data-label="Fornecedores">
+        <svg viewBox="0 0 24 24"><path d="M3 9.5 4.6 4h14.8L21 9.5"/><path d="M4 9.5v10.5h16V9.5"/><path d="M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M10 20v-5h4v5"/></svg>
+      </a>
+      <a href="#categorias" class="side-btn" data-page="categorias" data-label="Categorias">
+        <svg viewBox="0 0 24 24"><path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1.4"/></svg>
+      </a>
+      <span class="side-sep" id="side-sep"></span>
+      <a href="#usuarios" class="side-btn hidden" data-page="usuarios" data-label="Usuários" id="nav-usuarios">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.7.8 2.8 2.6 3 5.2"/></svg>
+      </a>
+    </nav>
+    <button class="side-avatar" id="btn-perfil" type="button" title="Meu perfil"><span id="user-avatar"></span></button>
+  </aside>
+
+  <main class="main">
+
+    <!-- ─────────── LANÇAMENTOS ─────────── -->
+    <section class="page" id="page-lancamentos">
+      <header class="page-head">
+        <div><h1>Lançamentos</h1><p>Receitas e despesas da empresa, organizadas por categoria.</p></div>
+        <button class="btn btn-gold" type="button" id="btn-novo-tx"><svg viewBox="0 0 24 24" class="ico-btn"><path d="M12 5v14M5 12h14"/></svg>Novo lançamento</button>
+      </header>
+
+      <div class="kpis">
+        <div class="kpi"><span><i class="kd pos"></i>Receitas</span><strong id="kpi-rec">R$ 0,00</strong></div>
+        <div class="kpi"><span><i class="kd neg"></i>Despesas</span><strong id="kpi-desp">R$ 0,00</strong></div>
+        <div class="kpi"><span><i class="kd warn"></i>Em aberto</span><strong id="kpi-aberto">R$ 0,00</strong></div>
+        <div class="kpi saldo"><span>Saldo do período</span><strong id="kpi-saldo">R$ 0,00</strong></div>
+      </div>
+
+      <form class="toolbar" id="tx-toolbar">
+        <div class="pills" id="tx-f-tipo"><button type="button" data-v="" class="on">Tudo</button><button type="button" data-v="income">Receitas</button><button type="button" data-v="expense">Despesas</button></div>
+        <div class="select"><select id="tx-f-status" aria-label="Situação"><option value="">Qualquer situação</option><option value="quitado">Quitados</option><option value="em_aberto">Em aberto</option></select></div>
+        <div class="select"><select id="tx-f-categoria" aria-label="Categoria"><option value="">Todas as categorias</option></select></div>
+        <div class="select"><select id="tx-f-mes" aria-label="Mês"></select></div>
+        <div class="select"><select id="tx-f-ano" aria-label="Ano"></select></div>
+        <label class="search"><svg class="ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="tx-f-busca" placeholder="Buscar descrição ou fornecedor"/></label>
+      </form>
+
+      <div class="table-card">
+        <div class="table-scroll">
+          <table class="tbl" id="tx-table">
+            <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Fornecedor / cliente</th><th class="r">Valor</th><th>Vencimento</th><th>Situação</th><th class="act"></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <nav class="pager" id="tx-pager"></nav>
+      </div>
+    </section>
+
+    <section class="page" id="page-parceiros">
+      <header class="page-head">
+        <div><h1>Parceiros</h1><p>Sua rede de parceiros estratégicos: contatos, CNPJ e contratos em um só lugar.</p></div>
+        <button class="btn btn-gold" type="button" id="btn-novo-parceiro"><svg viewBox="0 0 24 24" class="ico-btn"><path d="M12 5v14M5 12h14"/></svg>Novo parceiro</button>
+      </header>
+      <form class="toolbar" id="parc-toolbar">
+        <div class="pills" id="parc-f-sit"><button type="button" data-v="1" class="on">Ativos</button><button type="button" data-v="0">Desativados</button><button type="button" data-v="">Todos</button></div>
+        <label class="search"><svg class="ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="parc-f-busca" placeholder="Buscar por nome, razão social ou CNPJ"/></label>
+        <span class="count" id="parc-count"></span>
+      </form>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table class="tbl" id="parc-table">
+            <thead><tr><th>Nome</th><th>Razão social</th><th>CNPJ</th><th>Responsável</th><th>WhatsApp</th><th>Situação</th><th class="act"></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <nav class="pager" id="parc-pager"></nav>
+      </div>
+    </section>
+
+    <section class="page" id="page-fornecedores">
+      <header class="page-head">
+        <div><h1>Fornecedores</h1><p>Quem fornece para a empresa, com documentos, contatos e contratos sempre à mão.</p></div>
+        <button class="btn btn-gold" type="button" id="btn-novo-fornecedor"><svg viewBox="0 0 24 24" class="ico-btn"><path d="M12 5v14M5 12h14"/></svg>Novo fornecedor</button>
+      </header>
+      <form class="toolbar" id="forn-toolbar">
+        <div class="pills" id="forn-f-sit"><button type="button" data-v="1" class="on">Ativos</button><button type="button" data-v="0">Desativados</button><button type="button" data-v="">Todos</button></div>
+        <label class="search"><svg class="ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="forn-f-busca" placeholder="Buscar por nome, razão social ou documento"/></label>
+        <span class="count" id="forn-count"></span>
+      </form>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table class="tbl" id="forn-table">
+            <thead><tr><th>Nome</th><th>Razão social</th><th>CNPJ / CPF</th><th>Responsável</th><th>WhatsApp</th><th>Situação</th><th class="act"></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <nav class="pager" id="forn-pager"></nav>
+      </div>
+    </section>
+
+    <!-- ─────────── CATEGORIAS ─────────── -->
+    <section class="page" id="page-categorias">
+      <header class="page-head">
+        <div><h1>Categorias</h1><p>Agrupe os lançamentos para entender de onde vem e para onde vai o dinheiro.</p></div>
+        <button class="btn btn-gold" type="button" id="btn-nova-categoria"><svg viewBox="0 0 24 24" class="ico-btn"><path d="M12 5v14M5 12h14"/></svg>Nova categoria</button>
+      </header>
+      <form class="toolbar" id="cat-toolbar">
+        <div class="pills" id="cat-f-sit"><button type="button" data-v="1" class="on">Ativas</button><button type="button" data-v="0">Desativadas</button><button type="button" data-v="">Todas</button></div>
+        <div class="pills" id="cat-f-tipo"><button type="button" data-v="" class="on">Receitas e despesas</button><button type="button" data-v="income">Receitas</button><button type="button" data-v="expense">Despesas</button></div>
+        <label class="search"><svg class="ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="cat-f-busca" placeholder="Buscar categoria"/></label>
+        <span class="count" id="cat-count"></span>
+      </form>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table class="tbl" id="cat-table">
+            <thead><tr><th>Categoria</th><th>Tipo</th><th>Descrição</th><th class="r">Lançamentos <span id="cat-ano-label"></span></th><th class="r">Total <span id="cat-ano-label2"></span></th><th>Situação</th><th class="act"></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <nav class="pager" id="cat-pager"></nav>
+      </div>
+    </section>
+
+    <!-- ─────────── USUÁRIOS (admin) ─────────── -->
+    <section class="page" id="page-usuarios">
+      <header class="page-head">
+        <div><h1>Usuários</h1><p>Quem acessa o sistema e o que cada pessoa pode ver.</p></div>
+        <button class="btn btn-gold" type="button" id="btn-novo-usuario"><svg viewBox="0 0 24 24" class="ico-btn"><path d="M12 5v14M5 12h14"/></svg>Novo usuário</button>
+      </header>
+      <form class="toolbar" id="usr-toolbar">
+        <label class="search"><svg class="ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="usr-f-busca" placeholder="Buscar usuário ou nome"/></label>
+        <span class="count" id="usr-count"></span>
+      </form>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table class="tbl" id="usr-table">
+            <thead><tr><th>Usuário</th><th>Função</th><th>Telas liberadas</th><th>Criado em</th><th class="act"></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <nav class="pager" id="usr-pager"></nav>
+      </div>
+    </section>
+
+    <section class="page" id="page-vazio">
+      <header class="page-head"><div><h1>Nenhuma tela liberada</h1><p>Seu usuário ainda não tem acesso a nenhuma tela. Peça para um administrador liberar.</p></div></header>
+    </section>
+  </main>
+</div>
+
+<!-- Menu dos 3 pontinhos (um só, reposicionado ao lado do botão clicado) -->
+<div class="row-menu hidden" id="row-menu" role="menu"></div>
+
+<!-- ═══════════════════════ MODAIS ═══════════════════════ -->
+
+<!-- Lançamento -->
+<div class="modal sheet hidden" id="modal-tx">
+  <div class="modal-box lg">
+    <header class="modal-head"><h2 id="tx-modal-title">Novo Lançamento</h2><button class="x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+    <form class="modal-body" id="tx-form">
+      <div class="seg" id="tx-tipo-seg">
+        <button type="button" data-tipo="income">Receita</button>
+        <button type="button" data-tipo="expense" class="on">Despesa</button>
+      </div>
+      <div class="grid">
+        <label class="field"><span>Data *</span><input type="date" id="tx-data" required/></label>
+        <label class="field"><span>Valor (R$) *</span><input type="number" id="tx-valor" step="0.01" min="0" placeholder="0,00" required/></label>
+        <label class="field"><span>Categoria</span><select id="tx-categoria"></select></label>
+        <label class="field"><span>Descrição</span><input type="text" id="tx-descricao" maxlength="255" placeholder="Ex: Aluguel de outubro"/></label>
+        <label class="field"><span id="tx-pessoa-label">Fornecedor</span><select id="tx-pessoa"></select></label>
+        <label class="field"><span>Forma de pagamento</span><select id="tx-forma"></select></label>
+        <label class="field"><span>Caixa / Banco</span><select id="tx-caixa"></select></label>
+        <label class="field"><span>Centro de custo</span><select id="tx-centro"></select></label>
+        <label class="field"><span>Situação</span><select id="tx-status"><option value="quitado">Quitado</option><option value="em_aberto">Em aberto</option></select></label>
+        <label class="field"><span>Vencimento</span><input type="date" id="tx-venc"/></label>
+        <label class="field"><span>Data de pagamento</span><input type="date" id="tx-pag"/></label>
+        <label class="field"><span>Grupo / Conta</span><select id="tx-conta"></select></label>
+        <label class="field span2"><span>Observações</span><input type="text" id="tx-obs" placeholder="Notas adicionais"/></label>
+      </div>
+      <div class="taxa hidden" id="tx-taxa">Taxa da forma de pagamento: <strong id="tx-taxa-v"></strong> · Valor líquido: <strong id="tx-liq-v"></strong></div>
+      <div class="form-error" id="tx-error"></div>
+    </form>
+    <footer class="modal-foot"><button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-navy" id="btn-salvar-tx">Salvar</button></footer>
+  </div>
+</div>
+
+<!-- Parceiro / Fornecedor (mesmo formulário, campos ajustados por tipo) -->
+<div class="modal sheet hidden" id="modal-ent">
+  <div class="modal-box lg">
+    <header class="modal-head"><h2 id="ent-modal-title">Novo Parceiro</h2><button class="x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+    <form class="modal-body" id="ent-form">
+      <div class="grid">
+        <label class="field"><span>Nome *</span><input type="text" id="ent-nome" maxlength="150"/></label>
+        <label class="field"><span id="ent-razao-label">Razão Social *</span><input type="text" id="ent-razao" maxlength="255"/></label>
+        <div class="field"><span id="ent-doc-label">CNPJ *</span>
+          <div class="input-btn"><input type="text" id="ent-doc" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00"/><button type="button" class="btn btn-ghost sm" id="btn-buscar-cnpj" title="Preenche os dados pela Receita (BrasilAPI)">Buscar</button></div>
+          <small class="hint" id="ent-doc-hint"></small>
+        </div>
+        <label class="field"><span>E-mail</span><input type="email" id="ent-email" maxlength="150"/></label>
+        <label class="field"><span id="ent-resp-label">Responsável *</span><input type="text" id="ent-resp" maxlength="150"/></label>
+        <label class="field"><span id="ent-contato-label">Contato *</span><input type="text" id="ent-contato" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000"/></label>
+        <label class="field"><span>WhatsApp</span><input type="text" id="ent-whats" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000"/></label>
+        <label class="field" id="ent-comissao-wrap"><span>Comissão (R$)</span><input type="number" id="ent-comissao" step="0.01" min="0" placeholder="0,00"/></label>
+        <label class="field span2"><span>Endereço</span><input type="text" id="ent-endereco" maxlength="255"/></label>
+        <label class="field span2"><span>Observações</span><input type="text" id="ent-obs" placeholder="Condições, vigência do contrato, etc."/></label>
+        <div class="field"><span>Contrato</span>
+          <div class="file-pick"><button type="button" class="btn btn-ghost sm" onclick="document.getElementById('ent-contrato').click()">Anexar arquivo</button><span id="ent-contrato-nome" class="file-name">Nenhum arquivo</span></div>
+          <input type="file" id="ent-contrato" accept=".pdf,.doc,.docx,.odt,image/*" hidden/>
+        </div>
+        <div class="field"><span>Situação</span>
+          <div class="seg sm" id="ent-sit-seg"><button type="button" data-v="1" class="on">Ativo</button><button type="button" data-v="0">Desativado</button></div>
+        </div>
+      </div>
+      <div class="form-error" id="ent-error"></div>
+    </form>
+    <footer class="modal-foot"><button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-navy" id="btn-salvar-ent">Salvar</button></footer>
+  </div>
+</div>
+
+<!-- Contratos de parceiro/fornecedor -->
+<div class="modal sheet hidden" id="modal-contrato">
+  <div class="modal-box">
+    <header class="modal-head"><div><h2>Contrato</h2><p class="modal-sub" id="contrato-sub"></p></div><button class="x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+    <div class="modal-body">
+      <h3 class="sec">Contrato principal</h3>
+      <div id="contrato-principal"></div>
+      <h3 class="sec">Aditivos e outros documentos</h3>
+      <div id="contrato-extras" class="doc-list"></div>
+      <div class="add-doc">
+        <input type="text" id="contrato-desc" placeholder="Descrição (ex: Aditivo 2026)" maxlength="255"/>
+        <button type="button" class="btn btn-gold sm" onclick="document.getElementById('contrato-extra-file').click()">Adicionar arquivo</button>
+        <input type="file" id="contrato-extra-file" accept=".pdf,.doc,.docx,.odt,image/*" hidden/>
+        <input type="file" id="contrato-main-file" accept=".pdf,.doc,.docx,.odt,image/*" hidden/>
+      </div>
+      <div class="form-error" id="contrato-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Categoria -->
+<div class="modal sheet hidden" id="modal-cat">
+  <div class="modal-box">
+    <header class="modal-head"><h2 id="cat-modal-title">Nova Categoria</h2><button class="x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+    <form class="modal-body" id="cat-form">
+      <label class="field"><span>Nome *</span><input type="text" id="cat-nome" maxlength="150" placeholder="Ex: Aluguel, Consultas, Marketing"/></label>
+      <div class="field"><span>Tipo *</span>
+        <div class="seg" id="cat-tipo-seg"><button type="button" data-v="expense" class="on">Despesa</button><button type="button" data-v="income">Receita</button><button type="button" data-v="ambos">Ambos</button></div>
+      </div>
+      <div class="field"><span>Cor</span>
+        <div class="colors" id="cat-cores"></div>
+      </div>
+      <label class="field"><span>Descrição</span><input type="text" id="cat-desc" maxlength="255" placeholder="Opcional — o que entra nessa categoria"/></label>
+      <div class="field"><span>Situação</span>
+        <div class="seg sm" id="cat-sit-seg"><button type="button" data-v="1" class="on">Ativa</button><button type="button" data-v="0">Desativada</button></div>
+      </div>
+      <div class="form-error" id="cat-error"></div>
+    </form>
+    <footer class="modal-foot"><button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-navy" id="btn-salvar-cat">Salvar</button></footer>
+  </div>
+</div>
+
+<!-- Usuário -->
+<div class="modal sheet hidden" id="modal-usr">
+  <div class="modal-box">
+    <header class="modal-head"><h2 id="usr-modal-title">Novo Usuário</h2><button class="x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+    <form class="modal-body" id="usr-form" autocomplete="off">
+      <div class="grid">
+        <label class="field"><span>Usuário *</span><input type="text" id="usr-username" placeholder="sem espaços" autocomplete="off"/></label>
+        <label class="field"><span>Nome</span><input type="text" id="usr-nome" maxlength="150"/></label>
+        <label class="field"><span id="usr-senha-label">Senha *</span><input type="password" id="usr-senha" autocomplete="new-password" placeholder="mínimo 6 caracteres"/></label>
+        <div class="field"><span>Função</span>
+          <div class="seg sm" id="usr-role-seg"><button type="button" data-v="user" class="on">Usuário</button><button type="button" data-v="admin">Administrador</button></div>
+        </div>
+      </div>
+      <div class="field" id="usr-perms-wrap">
+        <span>Telas que essa pessoa pode ver <button type="button" class="link" id="usr-perms-todas">marcar todas</button></span>
+        <div class="perms" id="usr-perms"></div>
+      </div>
+      <p class="hint" id="usr-admin-hint" hidden>Administradores veem todas as telas e gerenciam usuários.</p>
+      <div class="form-error" id="usr-error"></div>
+    </form>
+    <footer class="modal-foot"><button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-navy" id="btn-salvar-usr">Salvar</button></footer>
+  </div>
+</div>
+
+<!-- Perfil -->
+<div class="modal hidden" id="modal-perfil">
+  <div class="modal-box sm">
+    <header class="modal-head"><h2>Meu perfil</h2><button class="x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+    <form class="modal-body" id="perfil-form">
+      <div class="perfil-top">
+        <div class="avatar-lg" id="perfil-avatar"></div>
+        <div><strong id="perfil-username"></strong><div class="muted" id="perfil-role"></div>
+          <button type="button" class="link" onclick="document.getElementById('perfil-foto').click()">Trocar foto</button>
+          <input type="file" id="perfil-foto" accept="image/*" hidden/></div>
+      </div>
+      <label class="field"><span>Nome</span><input type="text" id="perfil-nome" maxlength="150"/></label>
+      <label class="field"><span>Nova senha</span><input type="password" id="perfil-senha" autocomplete="new-password" placeholder="deixe em branco para não alterar"/></label>
+      <div class="form-error" id="perfil-error"></div>
+    </form>
+    <footer class="modal-foot spread"><button class="btn btn-ghost danger" id="btn-sair">Sair do sistema</button><div><button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-navy" id="btn-salvar-perfil">Salvar</button></div></footer>
+  </div>
+</div>
+
+<!-- Visualizar (genérico) -->
+<div class="modal sheet hidden" id="modal-view">
+  <div class="modal-box">
+    <header class="modal-head"><div><h2 id="view-title"></h2><p class="modal-sub" id="view-sub"></p></div><button class="x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+    <div class="modal-body"><dl class="details" id="view-body"></dl></div>
+    <footer class="modal-foot" id="view-foot"></footer>
+  </div>
+</div>
+
+<!-- Confirmação -->
+<div class="modal hidden" id="modal-confirm">
+  <div class="modal-box sm">
+    <div class="modal-body confirm"><h2 id="confirm-title">Tem certeza?</h2><p id="confirm-msg"></p></div>
+    <footer class="modal-foot"><button class="btn btn-ghost" id="confirm-nao">Cancelar</button><button class="btn btn-danger" id="confirm-sim">Confirmar</button></footer>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
