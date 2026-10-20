@@ -107,11 +107,16 @@ Router::post('transactions', function () {
 Router::put('transactions/:id', function ($id) {
     permitir('lancamentos');
     $id = (int) $id;
-    if (!q1('SELECT id FROM transactions WHERE id=?', [$id])) fail(404, 'Lançamento não encontrado');
+    $atual = q1('SELECT * FROM transactions WHERE id=?', [$id]);
+    if (!$atual) fail(404, 'Lançamento não encontrado');
     $f = tx_fields();
     $set = implode(',', array_map(fn($c) => "`$c`=?", array_keys($f)));
     exec_sql("UPDATE transactions SET $set WHERE id=?", [...array_values($f), $id]);
-    log_action('update', 'transactions', $id, "{$f['tipo']} - {$f['descricao']} - R\${$f['valor']}");
+    // Log com o que mudou (valor, datas, situação...), não só o estado final.
+    $diff = diff_log($atual, $f, ['tipo' => 'tipo', 'data' => 'data', 'descricao' => 'descrição', 'valor' => 'valor', 'categoria_nome' => 'categoria',
+        'cliente_fornecedor' => 'cliente/fornecedor', 'forma_pagamento_nome' => 'forma', 'caixa_nome' => 'caixa', 'status' => 'situação',
+        'data_vencimento' => 'vencimento', 'data_pagamento' => 'pagamento']);
+    log_action('update', 'transactions', $id, "{$f['tipo']} - {$f['descricao']} - R\${$f['valor']}" . ($diff ? " — $diff" : ''));
     return ['ok' => true];
 });
 

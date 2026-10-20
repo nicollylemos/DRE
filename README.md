@@ -3,10 +3,20 @@
 Sistema de controle financeiro (DRE) — versão **PHP**, convertida do Node/Express.
 Mesma interface, mesmas regras de cálculo (inclusive as correções da `auditoria-dre.md`), mesmo banco MySQL.
 
-**Interface (out/2026):** novo visual do protótipo — menu lateral marinho, botões dourados, tabelas com menu de ações (⋮) e paginação. Telas ativas por enquanto: **Lançamentos, Parceiros, Fornecedores, Categorias** e **Usuários** (admin). As rotas de DRE/fluxo de caixa/exportação continuam na API pra quando as telas voltarem.
-Para usar o logo oficial, salve-o como `img/logo-oaf.png` (o `logo-oaf.svg` é só provisório).
+**Versão 2.0.0 (out/2026)** — a versão aparece na tela de login (constante `APP_VERSION` em `app/bootstrap.php`).
 
-**Novidades da versão anterior**
+- **Dashboard** — visão geral do DRE do exercício (receita bruta, deduções, receita líquida, despesas, lucro e margem), gráfico mensal de receitas x despesas, despesas por categoria, totais em aberto/vencidos, saldo em caixas e **agenda de vencimentos** (calendário com as contas a pagar e a receber; clique no dia para ver os títulos e dar baixa).
+- **Fluxo de Caixa** — mês a mês, filtrando por caixa: realizado x previsto, saldo de abertura (agora continua do mês anterior), saldo final e projetado.
+- **Clientes** — nome, razão social, CPF ou CNPJ (validado, com busca na Receita), endereço, estado, cidade, telefone, e-mail e observações.
+- **Caixas / Banco** — conta bancária, caixa físico ou investimento, com banco, agência, conta, saldo inicial e **saldo atual** calculado.
+- **Formas de pagamento** — tipo (crédito, débito, PIX, boleto, dinheiro), banco, agência, parcelas, dias para recebimento, taxas e tarifa fixa, com simulação do valor líquido.
+- **Níveis de acesso** — *Administrador* vê tudo; *Usuário* só vê Dashboard, Lançamentos, Fluxo de Caixa, Clientes, Fornecedores, Parceiros e Logs (bloqueado no menu e na API). O antigo `TODOS_ADMIN` foi removido.
+- **Logs** — histórico de todas as alterações (quem, quando, o quê, IP), com filtros por ação, área, usuário e período; edições registram o que mudou (antes → depois).
+- **Logo** oficial na tela de login e no menu lateral (`img/logo-oaf.png` e `img/logo-oaf-mark.png`).
+
+> Contas que foram promovidas a admin pelo antigo `TODOS_ADMIN` continuam admin — ajuste o nível de cada uma em **Usuários**.
+
+**Novidades da versão 1.x**
 
 - **Categorias** — cadastro próprio (nome, tipo receita/despesa/ambos, cor, descrição, ativa/inativa). O lançamento escolhe a categoria, a lista filtra por categoria, o donut do Dashboard usa as cores delas e o DRE Detalhado agrupa por categoria. Categoria em uso não é excluída (só desativada) pra não perder histórico.
 - **Parceiros** — CNPJ validado pelos dígitos verificadores (front e servidor), sem duplicar CNPJ, botão **Buscar** que preenche razão social/endereço pela BrasilAPI, contrato principal + **aditivos/outros contratos** anexados direto no cadastro do parceiro, busca por nome ou CNPJ.

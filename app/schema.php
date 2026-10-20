@@ -6,7 +6,7 @@
  * quem preferir importar manualmente pelo phpMyAdmin.
  */
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 function schema_tables(): array {
     $e = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
@@ -23,7 +23,7 @@ function schema_tables(): array {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         ) $e",
         'clientes' => "CREATE TABLE IF NOT EXISTS clientes (
-            id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(255) NOT NULL, cnpj_cpf VARCHAR(30),
+            id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(255) NOT NULL, razao_social VARCHAR(255) NULL, cnpj_cpf VARCHAR(30),
             estado VARCHAR(50), cidade VARCHAR(100), endereco VARCHAR(255), telefone VARCHAR(30),
             email VARCHAR(150), observacoes TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         ) $e",
@@ -81,11 +81,16 @@ function schema_tables(): array {
         'centros_custo' => "CREATE TABLE IF NOT EXISTS centros_custo (
             id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(150) NOT NULL
         ) $e",
+        // Caixa físico ou conta bancária. saldo_inicial é o saldo de partida; o saldo
+        // atual é calculado (saldo inicial + lançamentos quitados + transferências).
         'caixas' => "CREATE TABLE IF NOT EXISTS caixas (
-            id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL, saldo_inicial DECIMAL(15,2) DEFAULT 0.00
+            id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL,
+            tipo VARCHAR(20) NOT NULL DEFAULT 'banco', banco VARCHAR(100) NULL, agencia VARCHAR(30) NULL, conta VARCHAR(30) NULL,
+            saldo_inicial DECIMAL(15,2) DEFAULT 0.00, observacoes VARCHAR(255) NULL
         ) $e",
+        // tipo: credito | debito | pix | boleto | dinheiro
         'formas_pagamento' => "CREATE TABLE IF NOT EXISTS formas_pagamento (
-            id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL, banco VARCHAR(100) NULL, agencia VARCHAR(30) NULL,
+            id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL, tipo VARCHAR(20) NULL, banco VARCHAR(100) NULL, agencia VARCHAR(30) NULL,
             parcelas INT DEFAULT 1, dias_recebimento INT DEFAULT 0, taxa_intermediacao DECIMAL(8,4) DEFAULT 0,
             taxa_parcelamento DECIMAL(8,4) DEFAULT 0, tarifa_fixa DECIMAL(10,2) DEFAULT 0
         ) $e",
@@ -122,6 +127,7 @@ function schema_tables(): array {
             user_id              INT,
             created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_tx_data (data),
+            INDEX idx_tx_venc (data_vencimento),
             INDEX idx_tx_categoria (categoria_id)
         ) $e",
         'transfers' => "CREATE TABLE IF NOT EXISTS transfers (
@@ -158,7 +164,10 @@ function schema_tables(): array {
 function schema_columns(): array {
     return [
         'users'            => ['nome' => 'VARCHAR(150) NULL AFTER username', 'foto_path' => 'VARCHAR(255) NULL', 'foto_nome' => 'VARCHAR(255) NULL', 'permissoes' => 'TEXT NULL'],
-        'formas_pagamento' => ['banco' => 'VARCHAR(100) NULL', 'agencia' => 'VARCHAR(30) NULL'],
+        'formas_pagamento' => ['banco' => 'VARCHAR(100) NULL', 'agencia' => 'VARCHAR(30) NULL', 'tipo' => 'VARCHAR(20) NULL AFTER nome'],
+        'clientes'         => ['razao_social' => 'VARCHAR(255) NULL AFTER nome'],
+        'caixas'           => ['tipo' => "VARCHAR(20) NOT NULL DEFAULT 'banco' AFTER nome", 'banco' => 'VARCHAR(100) NULL AFTER tipo',
+                               'agencia' => 'VARCHAR(30) NULL AFTER banco', 'conta' => 'VARCHAR(30) NULL AFTER agencia', 'observacoes' => 'VARCHAR(255) NULL'],
         'transactions'     => ['categoria_id' => 'INT NULL AFTER grupo', 'categoria_nome' => 'VARCHAR(150) NULL AFTER categoria_id'],
         'parceiros'        => ['observacoes' => 'TEXT NULL', 'ativo' => 'TINYINT(1) NOT NULL DEFAULT 1'],
         'fornecedores'     => ['razao_social' => 'VARCHAR(255) NULL AFTER nome', 'whatsapp' => 'VARCHAR(30) NULL', 'responsavel' => 'VARCHAR(150) NULL',
@@ -180,8 +189,14 @@ function run_migrations(): void {
         }
     }
     seed_dados();
-    // Por enquanto todo mundo é admin (v5): promove quem já existia.
-    if (TODOS_ADMIN) exec_sql("UPDATE users SET role='admin' WHERE role<>'admin'");
+    // v6: formas antigas sem tipo — deduz pelo nome (dá pra corrigir na tela depois).
+    exec_sql("UPDATE formas_pagamento SET tipo = CASE
+        WHEN UPPER(nome) LIKE '%PIX%' THEN 'pix'
+        WHEN UPPER(nome) LIKE '%BOLETO%' THEN 'boleto'
+        WHEN UPPER(nome) LIKE '%DINHEIRO%' THEN 'dinheiro'
+        WHEN UPPER(nome) LIKE '%DÉBITO%' OR UPPER(nome) LIKE '%DEBITO%' THEN 'debito'
+        WHEN UPPER(nome) LIKE '%CRÉDITO%' OR UPPER(nome) LIKE '%CREDITO%' THEN 'credito'
+        ELSE NULL END WHERE tipo IS NULL OR tipo = ''");
 }
 
 function seed_dados(): void {
@@ -191,7 +206,7 @@ function seed_dados(): void {
         foreach (['DESPESAS OPERACIONAIS', 'DESPESAS DE IMPOSTOS', 'DESPESAS ADMINISTRATIVAS', 'RECEITA OPERACIONAL', 'RECEITA VENDAS', 'RECEITA COMUM', 'ADMINISTRATIVO'] as $n)
             exec_sql('INSERT INTO centros_custo (nome) VALUES (?)', [$n]);
     }
-    if (!$count('caixas')) exec_sql("INSERT INTO caixas (nome, saldo_inicial) VALUES ('Itaú', 0), ('NU BANK', 0)");
+    if (!$count('caixas')) exec_sql("INSERT INTO caixas (nome, tipo, banco, saldo_inicial) VALUES ('Itaú', 'banco', 'Itaú', 0), ('NU BANK', 'banco', 'Nubank', 0)");
     if (!$count('formas_pagamento')) {
         exec_sql("INSERT INTO formas_pagamento (nome,parcelas,dias_recebimento,taxa_intermediacao,taxa_parcelamento,tarifa_fixa) VALUES
             ('CARTÃO CRÉDITO',1,30,0,1.9,0),('CARTÃO DÉBITO',1,1,0,0,0),('BOLETO BANCÁRIO',1,1,0,0,0),('DINHEIRO',1,0,0,0,0),

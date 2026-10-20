@@ -32,7 +32,7 @@ Router::post('auth/register', function () {
 });
 
 Router::get('auth/setup-status', function () {
-    return ['needsSetup' => (int) q1('SELECT COUNT(*) n FROM users')['n'] === 0];
+    return ['needsSetup' => (int) q1('SELECT COUNT(*) n FROM users')['n'] === 0, 'version' => APP_VERSION];
 });
 
 Router::post('auth/login', function () {

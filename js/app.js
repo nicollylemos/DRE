@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    OAF — Controle Financeiro · front-end
-   Telas: Lançamentos, Parceiros, Fornecedores, Categorias e Usuários (admin).
+   Telas: Dashboard, Lançamentos, Fluxo de Caixa, Clientes, Fornecedores, Parceiros,
+   Logs e — só admin — Categorias, Caixas/Banco, Formas de pagamento e Usuários.
    ═══════════════════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -9,10 +10,14 @@ const $ = id => document.getElementById(id);
 const API = 'api'; // relativo: funciona na raiz ou em subpasta (ex: localhost/DRE-php/)
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const POR_PAGINA = 10;
+const MESES_CURTOS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
 // Escapa texto vindo do banco antes de ir pro innerHTML (evita XSS).
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtBRL = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtBRLs = v => (Number(v) < 0 ? '− ' : '') + fmtBRL(Math.abs(Number(v) || 0)); // com sinal
+const fmtBRLk = v => { const a = Math.abs(v); return a >= 1e6 ? (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi' : a >= 1e3 ? (v / 1e3).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil' : String(Math.round(v)); };
 const fmtData = d => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—';
 const hojeISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 const soDigitos = v => String(v || '').replace(/\D/g, '');
@@ -150,9 +155,9 @@ function paginar(lista, pagina) {
   const p = Math.min(Math.max(1, pagina), total);
   return { itens: lista.slice((p - 1) * POR_PAGINA, p * POR_PAGINA), pagina: p, total, n: lista.length };
 }
-function renderPager(elId, pagina, total, onChange, n = 0) {
+function renderPager(elId, pagina, total, onChange, n = 0, porPagina = POR_PAGINA) {
   const el = $(elId);
-  const ini = n ? (pagina - 1) * POR_PAGINA + 1 : 0, fim = Math.min(pagina * POR_PAGINA, n);
+  const ini = n ? (pagina - 1) * porPagina + 1 : 0, fim = Math.min(pagina * porPagina, n);
   const info = n ? `<span class="pg-info">Mostrando ${ini}–${fim} de ${n}</span>` : '';
   if (total <= 1) { el.innerHTML = info; el.classList.toggle('hidden', !n); return; }
   el.classList.remove('hidden');
@@ -180,6 +185,7 @@ async function mostrarLogin() {
   $('app').classList.add('hidden');
   $('auth-screen').classList.remove('hidden');
   const st = await api('auth/setup-status');
+  $('auth-version').textContent = st.version ? `Versão ${st.version}` : '';
   $('login-form').classList.toggle('hidden', !!st.needsSetup);
   $('setup-form').classList.toggle('hidden', !st.needsSetup);
   setTimeout(() => (st.needsSetup ? $('setup-user') : $('login-user')).focus(), 50);
@@ -211,17 +217,26 @@ async function entrarNoApp() {
   renderAvatar($('user-avatar'), state.user);
   // Menu: só aparece o que a pessoa pode ver
   document.querySelectorAll('.side-btn').forEach(a => a.classList.toggle('hidden', !podeVerPagina(a.dataset.page)));
+  $('side-brand').href = '#' + primeiraPagina(); // a logo leva pra primeira tela liberada
   await carregarCadastros();
   irPara(location.hash.slice(1));
 }
 
 // ─── NAVEGAÇÃO ────────────────────────────────────────────────────────────────
+// perm = mesma chave que o backend usa em permitir(). Usuário comum só tem
+// dashboard, lancamentos, fluxo-caixa, cad-clientes, cad-fornecedores, cad-parceiros e logs.
 const PAGINAS = {
+  dashboard:    { perm: 'dashboard',        load: () => carregarDashboard() },
   lancamentos:  { perm: 'lancamentos',      load: () => carregarLancamentos() },
-  parceiros:    { perm: 'cad-parceiros',    load: () => ENT.parceiros.carregar() },
+  fluxo:        { perm: 'fluxo-caixa',      load: () => carregarFluxo() },
+  clientes:     { perm: 'cad-clientes',     load: () => carregarClientes() },
   fornecedores: { perm: 'cad-fornecedores', load: () => ENT.fornecedores.carregar() },
+  parceiros:    { perm: 'cad-parceiros',    load: () => ENT.parceiros.carregar() },
   categorias:   { perm: 'cad-categorias',   load: () => carregarCategorias() },
+  caixas:       { perm: 'cad-caixas',       load: () => carregarCaixas() },
+  formas:       { perm: 'cad-formas',       load: () => carregarFormas() },
   usuarios:     { admin: true,              load: () => carregarUsuarios() },
+  logs:         { perm: 'logs',             load: () => carregarLogs() },
 };
 function podeVerPagina(p) { const c = PAGINAS[p]; return !!c && (c.admin ? ehAdmin() : pode(c.perm)); }
 function primeiraPagina() { return Object.keys(PAGINAS).find(podeVerPagina) || 'vazio'; }
@@ -244,6 +259,13 @@ async function carregarCadastros() {
   const sel = $('tx-f-categoria'), atual = sel.value;
   sel.innerHTML = '<option value="">Todas as categorias</option>' + (state.cad.categorias || []).map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   sel.value = atual;
+  // Sugestões de banco (Caixas e Formas de pagamento)
+  const bancos = new Set(['Itaú', 'Bradesco', 'Banco do Brasil', 'Caixa Econômica', 'Santander', 'Nubank', 'Inter', 'C6 Bank', 'Sicoob', 'Sicredi', 'Mercado Pago', 'PagBank', 'Stone', 'Cielo', 'Rede', 'Getnet']);
+  $('lista-bancos').innerHTML = [...bancos].map(b => `<option value="${esc(b)}">`).join('');
+  // Filtro de caixa do fluxo
+  const fx = $('fx-caixa'), fxAtual = fx.value;
+  fx.innerHTML = '<option value="">Todos os caixas</option>' + (state.cad.caixasBancos || []).map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  fx.value = fxAtual;
 }
 
 // ═══════════════════════════ LANÇAMENTOS ═══════════════════════════
@@ -793,13 +815,10 @@ function verCategoria(c) {
 }
 
 // ═══════════════════════════ USUÁRIOS (admin) ═══════════════════════════
-// Só as telas que existem hoje. Permissões antigas (de telas que ainda vão voltar)
-// são preservadas ao salvar, pra não sumirem sem querer.
-const PERM_TELAS = [
-  { key: 'lancamentos', label: 'Lançamentos' }, { key: 'cad-parceiros', label: 'Parceiros' },
-  { key: 'cad-fornecedores', label: 'Fornecedores' }, { key: 'cad-categorias', label: 'Categorias' },
-];
-const usr = { lista: [], pagina: 1, editId: null, extras: [] };
+// Dois níveis fixos: o administrador vê tudo; o usuário comum só as telas abaixo.
+const TELAS_USUARIO = ['Dashboard', 'Lançamentos', 'Fluxo de Caixa', 'Clientes', 'Fornecedores', 'Parceiros', 'Logs'];
+const TELAS_SO_ADMIN = ['Categorias', 'Caixas / Banco', 'Formas de pagamento', 'Usuários'];
+const usr = { lista: [], pagina: 1, editId: null };
 async function carregarUsuarios() {
   const r = await api('users');
   usr.lista = Array.isArray(r) ? r : [];
@@ -817,7 +836,7 @@ function renderUsuarios() {
       { label: 'Apagar', danger: true, disabled: eu, fn: () => apagarUsuario(u) },
     ];
     const telas = u.role === 'admin' ? '<span class="chip gold">Todas as telas</span>'
-      : (PERM_TELAS.filter(p => (u.permissoes || []).includes(p.key)).map(p => `<span class="chip">${p.label}</span>`).join('') || '<span class="chip gray">Nenhuma</span>');
+      : TELAS_USUARIO.map(l => `<span class="chip">${l}</span>`).join('');
     return `<tr>
       <td><div class="who">${u.foto_path ? `<span class="av"><img src="${esc(u.foto_path)}" alt=""/></span>` : avatar(u.nome || u.username)}<div><span class="ttl">${esc(u.nome || u.username)}${eu ? ' <span class="you">você</span>' : ''}</span><small>@${esc(u.username)}</small></div></div></td>
       <td><span class="tp ${u.role === 'admin' ? 'admin' : 'ambos'}">${u.role === 'admin' ? 'Administrador' : 'Usuário'}</span></td>
@@ -834,26 +853,26 @@ $('usr-f-busca').addEventListener('input', () => { usr.pagina = 1; renderUsuario
 
 function abrirUsuario(u = null) {
   usr.editId = u ? u.id : null;
-  const perms = u ? (u.permissoes || []) : ['lancamentos'];
-  usr.extras = perms.filter(p => !PERM_TELAS.some(t => t.key === p));
   $('usr-modal-title').textContent = u ? `Editar ${u.username}` : 'Novo Usuário';
   $('usr-senha-label').textContent = u ? 'Nova senha' : 'Senha *';
   $('usr-senha').placeholder = u ? 'deixe em branco para não alterar' : 'mínimo 6 caracteres';
   $('usr-username').value = u ? u.username : ''; $('usr-nome').value = u ? (u.nome || '') : ''; $('usr-senha').value = '';
   $('usr-error').textContent = '';
-  segSet('usr-role-seg', u ? u.role : 'admin'); // por enquanto toda conta nova é admin
-  $('usr-perms').innerHTML = PERM_TELAS.map(p => `<label class="perm"><input type="checkbox" value="${p.key}" ${perms.includes(p.key) ? 'checked' : ''}/>${p.label}</label>`).join('');
+  segSet('usr-role-seg', u ? u.role : 'user');
   atualizarRoleUsr();
   abrirModal('modal-usr');
 }
-function atualizarRoleUsr() { const admin = segValor('usr-role-seg') === 'admin'; $('usr-perms-wrap').classList.toggle('hidden', admin); $('usr-admin-hint').hidden = !admin; }
+function atualizarRoleUsr() {
+  const admin = segValor('usr-role-seg') === 'admin';
+  $('usr-nivel').innerHTML = admin
+    ? `<p>Administrador acessa <strong>todas as telas</strong>, inclusive:</p><div class="chips">${[...TELAS_USUARIO, ...TELAS_SO_ADMIN].map(l => `<span class="chip ${TELAS_SO_ADMIN.includes(l) ? 'gold' : ''}">${l}</span>`).join('')}</div>`
+    : `<p>Usuário acessa somente estas telas (o resto fica escondido e bloqueado):</p><div class="chips">${TELAS_USUARIO.map(l => `<span class="chip">${l}</span>`).join('')}</div>`;
+}
 $('usr-role-seg').addEventListener('change', atualizarRoleUsr);
-$('usr-perms-todas').addEventListener('click', () => { const cbs = [...$('usr-perms').querySelectorAll('input')]; const todas = cbs.every(c => c.checked); cbs.forEach(c => c.checked = !todas); });
 $('btn-novo-usuario').addEventListener('click', () => abrirUsuario());
 $('usr-form').addEventListener('submit', e => { e.preventDefault(); $('btn-salvar-usr').click(); });
 $('btn-salvar-usr').addEventListener('click', async () => {
   const body = { username: $('usr-username').value.trim(), nome: $('usr-nome').value.trim(), password: $('usr-senha').value, role: segValor('usr-role-seg') };
-  if (body.role !== 'admin') body.permissoes = [...[...$('usr-perms').querySelectorAll('input:checked')].map(i => i.value), ...usr.extras];
   if (!body.username) { $('usr-error').textContent = 'Informe o usuário.'; return; }
   if (!usr.editId && !body.password) { $('usr-error').textContent = 'Defina uma senha.'; return; }
   if (body.password && body.password.length < 6) { $('usr-error').textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
@@ -867,6 +886,560 @@ async function apagarUsuario(u) {
   if (r.error) return toast(r.error, 'err');
   toast('Usuário apagado'); carregarUsuarios();
 }
+
+// ═══════════════════════════ DASHBOARD ═══════════════════════════
+const hoje0 = new Date();
+const dash = { ano: hoje0.getFullYear(), calAno: hoje0.getFullYear(), calMes: hoje0.getMonth() + 1, dia: null, agenda: [] };
+const anosLista = () => { const a = new Date().getFullYear(); return [a + 1, a, a - 1, a - 2, a - 3, a - 4]; };
+$('dash-ano').innerHTML = anosLista().map(a => `<option value="${a}" ${a === dash.ano ? 'selected' : ''}>${a}</option>`).join('');
+$('dash-ano').addEventListener('change', () => {
+  dash.ano = Number($('dash-ano').value);
+  dash.calAno = dash.ano; dash.calMes = dash.ano === new Date().getFullYear() ? new Date().getMonth() + 1 : 1; dash.dia = null;
+  carregarDashboard();
+});
+$('btn-dash-excel').addEventListener('click', () => { location.href = `${API}/export/excel?year=${dash.ano}`; });
+
+async function carregarDashboard() {
+  const r = await api('dre?year=' + dash.ano);
+  if (r.error) { toast(r.error, 'err'); return; }
+  const L = r.dreLines || {};
+  const bruta = L['Receita Bruta'] || 0, ded = L['(-) Impostos e Deduções'] || 0, liq = L['Receita Líquida'] || 0;
+  const desp = L['(-) Despesas Operacionais'] || 0, lucro = L['Lucro / Prejuízo Líquido'] || 0;
+  $('dash-rec').textContent = fmtBRL(bruta);
+  $('dash-rec-sub').textContent = ded ? `Taxas/deduções ${fmtBRL(ded)}` : 'sem taxas no período';
+  $('dash-desp').textContent = fmtBRL(desp);
+  $('dash-desp-sub').textContent = liq ? `${Math.round(desp / liq * 100)}% da receita líquida` : '';
+  $('dash-lucro').textContent = fmtBRLs(lucro);
+  $('dash-lucro').classList.toggle('neg-on-dark', lucro < 0);
+  $('dash-lucro-sub').textContent = lucro < 0 ? 'prejuízo no exercício' : 'resultado do exercício';
+  $('dash-margem').textContent = liq ? (lucro / liq * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '—';
+
+  const ab = r.emAberto || {};
+  $('dash-areceber').textContent = fmtBRL(ab.a_receber);
+  $('dash-apagar').textContent = fmtBRL(ab.a_pagar);
+  $('dash-vencidos').textContent = String(Math.round(ab.qtd_vencidos || 0));
+  $('dash-vencidos').className = ab.qtd_vencidos ? 'neg' : '';
+  $('dash-vencidos-sub').textContent = ab.qtd_vencidos ? `${fmtBRL(ab.pagar_vencido)} a pagar · ${fmtBRL(ab.receber_vencido)} a receber` : 'nada vencido';
+  $('dash-saldo-cx').textContent = fmtBRLs(r.saldoCaixas);
+  $('dash-saldo-cx').className = r.saldoCaixas < 0 ? 'neg' : '';
+
+  $('dash-dre-ano').textContent = `Exercício ${dash.ano}`;
+  $('dash-cat-ano').textContent = `Exercício ${dash.ano}`;
+  const linha = (cls, k, v) => `<div class="${cls}"><dt>${k}</dt><dd>${v}</dd></div>`;
+  $('dash-dre').innerHTML =
+    linha('tot', 'Receita bruta', fmtBRL(bruta)) +
+    linha('sub', '(−) Impostos, taxas e deduções', fmtBRL(ded)) +
+    linha('tot', 'Receita líquida', fmtBRL(liq)) +
+    linha('sub', '(−) Despesas operacionais', fmtBRL(desp)) +
+    linha('res' + (lucro < 0 ? ' neg-res' : ''), lucro < 0 ? 'Prejuízo líquido' : 'Lucro líquido', fmtBRLs(lucro));
+
+  const meses = r.summary || [];
+  renderChartMeses($('dash-chart'), meses.map(m => m.receitas - m.deducoes), meses.map(m => m.despesas));
+  renderCategoriasDash(r.expensesByCategory || {}, r.categoryColors || {});
+  carregarAgenda();
+}
+
+// Barras agrupadas por mês: receita líquida x despesas. Tooltip por mês (hover/foco).
+function renderChartMeses(el, rec, desp) {
+  const max = Math.max(...rec, ...desp, 0);
+  if (!max) { el.innerHTML = '<div class="empty-chart">Sem lançamentos neste exercício.</div>'; return; }
+  const W = 720, H = 250, pl = 54, pr = 6, pt = 10, pb = 26, ih = H - pt - pb;
+  const passo = Math.pow(10, Math.floor(Math.log10(max))) / 2;
+  const topo = Math.ceil(max / passo / 4) * passo * 4 || 1;   // 4 faixas "redondas"
+  const y = v => pt + ih - (v / topo) * ih;
+  const gw = (W - pl - pr) / 12, bw = Math.min(18, (gw - 12) / 2);
+  const barra = (x, v, cor) => {
+    if (!v) return '';
+    const h = Math.max(2, ih * v / topo), yy = pt + ih - h, r = Math.min(4, h, bw / 2);
+    return `<path class="bar" fill="${cor}" d="M${x},${pt + ih}V${yy + r}Q${x},${yy} ${x + r},${yy}H${x + bw - r}Q${x + bw},${yy} ${x + bw},${yy + r}V${pt + ih}Z"/>`;
+  };
+  let g = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = topo / 4 * i, yy = y(v);
+    g += `<line class="grid-l" x1="${pl}" x2="${W - pr}" y1="${yy}" y2="${yy}"/><text class="axis-t" x="${pl - 8}" y="${yy + 4}" text-anchor="end">${fmtBRLk(v)}</text>`;
+  }
+  MESES_CURTOS.forEach((m, i) => {
+    const x0 = pl + gw * i, cx = x0 + gw / 2;
+    g += `<g class="col" data-i="${i}" tabindex="0"><rect class="hit" x="${x0 + 2}" y="${pt}" width="${gw - 4}" height="${ih}" rx="6"/>`
+      + barra(cx - bw - 1, rec[i], 'var(--c-rec)') + barra(cx + 1, desp[i], 'var(--c-desp)')
+      + `<text class="axis-t" x="${cx}" y="${H - 6}" text-anchor="middle">${m}</text></g>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Receita líquida e despesas por mês">${g}</svg><div class="chart-tip hidden"></div>`;
+  const tip = el.querySelector('.chart-tip');
+  const mostra = col => {
+    const i = Number(col.dataset.i), saldo = rec[i] - desp[i];
+    tip.innerHTML = `<b>${MESES[i]}</b><div><i style="background:var(--c-rec)"></i>Receita líquida<span class="r">${fmtBRL(rec[i])}</span></div>`
+      + `<div><i style="background:var(--c-desp)"></i>Despesas<span class="r">${fmtBRL(desp[i])}</span></div>`
+      + `<div style="margin-top:4px;border-top:1px solid rgba(255,255,255,.15);padding-top:4px">Resultado<span class="r">${fmtBRLs(saldo)}</span></div>`;
+    tip.classList.remove('hidden');
+    const cr = el.getBoundingClientRect(), rr = col.querySelector('.hit').getBoundingClientRect();
+    let left = rr.left - cr.left + rr.width / 2;
+    left = Math.min(Math.max(left, tip.offsetWidth / 2 + 4), cr.width - tip.offsetWidth / 2 - 4);
+    // Ancora acima da barra mais alta do mês, sem sair do card.
+    const tops = [...col.querySelectorAll('.bar')].map(b => b.getBoundingClientRect().top);
+    const topo = tops.length ? Math.min(...tops) : rr.bottom;
+    tip.style.left = left + 'px'; tip.style.top = Math.max(topo - cr.top, tip.offsetHeight + 8) + 'px';
+  };
+  el.querySelectorAll('.col').forEach(c => {
+    c.addEventListener('mouseenter', () => mostra(c)); c.addEventListener('focus', () => mostra(c));
+    c.addEventListener('mouseleave', () => tip.classList.add('hidden')); c.addEventListener('blur', () => tip.classList.add('hidden'));
+  });
+}
+
+function renderCategoriasDash(porCat, cores) {
+  const itens = Object.entries(porCat).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const total = itens.reduce((s, [, v]) => s + v, 0), max = itens.length ? itens[0][1] : 0;
+  $('dash-cats').innerHTML = itens.length ? itens.slice(0, 10).map(([nome, v]) => {
+    const cor = cores[nome] || 'var(--navy-2)';
+    return `<div class="cat-row"><span class="nm"><i style="background:${esc(cor)}"></i>${esc(nome)}</span>
+      <span class="vl">${fmtBRL(v)}<small>${Math.round(v / total * 100)}%</small></span>
+      <div class="trk"><span style="width:${(v / max * 100).toFixed(1)}%;background:${esc(cor)}"></span></div></div>`;
+  }).join('') : '<div class="empty-chart" style="grid-column:1/-1;padding:30px">Nenhuma despesa neste exercício.</div>';
+}
+
+// ─── Agenda (calendário de vencimentos) ───
+async function carregarAgenda() {
+  $('cal-titulo').textContent = `${MESES[dash.calMes - 1]} de ${dash.calAno}`;
+  const r = await api(`agenda?year=${dash.calAno}&month=${dash.calMes}`);
+  dash.agenda = Array.isArray(r) ? r : [];
+  if (r.error) toast(r.error, 'err');
+  renderCalendario(); renderAgendaLista();
+}
+function mudarMesAgenda(delta) {
+  let m = dash.calMes + delta, a = dash.calAno;
+  if (m < 1) { m = 12; a--; } if (m > 12) { m = 1; a++; }
+  dash.calMes = m; dash.calAno = a; dash.dia = null; carregarAgenda();
+}
+$('cal-prev').addEventListener('click', () => mudarMesAgenda(-1));
+$('cal-next').addEventListener('click', () => mudarMesAgenda(1));
+$('cal-hoje').addEventListener('click', () => { const d = new Date(); dash.calAno = d.getFullYear(); dash.calMes = d.getMonth() + 1; dash.dia = hojeISO(); carregarAgenda(); });
+
+function renderCalendario() {
+  const { calAno: a, calMes: m } = dash;
+  const primeiro = new Date(a, m - 1, 1).getDay(), dias = new Date(a, m, 0).getDate(), hoje = hojeISO();
+  let html = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => `<div class="dow">${d}</div>`).join('');
+  for (let i = 0; i < primeiro; i++) html += '<button type="button" class="out" tabindex="-1" aria-hidden="true"></button>';
+  for (let d = 1; d <= dias; d++) {
+    const iso = `${a}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const its = dash.agenda.filter(x => x.venc === iso);
+    const abertos = its.filter(x => x.status === 'em_aberto');
+    const rec = abertos.filter(x => x.tipo === 'income').reduce((s, x) => s + x.valor, 0);
+    const pag = abertos.filter(x => x.tipo === 'expense').reduce((s, x) => s + x.valor, 0);
+    const quitados = its.length - abertos.length;
+    const cls = [iso === hoje ? 'today' : '', iso === dash.dia ? 'sel' : '', its.some(x => x.vencido) ? 'late' : '', rec ? 'has-in' : '', pag ? 'has-out' : ''].join(' ');
+    const tags = (rec ? `<span class="tag in">+${fmtBRLk(rec)}</span>` : '') + (pag ? `<span class="tag out">−${fmtBRLk(pag)}</span>` : '')
+      + (quitados && !rec && !pag ? `<span class="tag done">✓ ${quitados}</span>` : '');
+    const titulo = its.length ? `${its.length} título(s)` + (rec ? ` · a receber ${fmtBRL(rec)}` : '') + (pag ? ` · a pagar ${fmtBRL(pag)}` : '') : 'Sem vencimentos';
+    html += `<button type="button" class="${cls}" data-dia="${iso}" title="${esc(titulo)}"><span class="d">${d}</span>${tags}</button>`;
+  }
+  $('cal').innerHTML = html;
+  $('cal').querySelectorAll('button[data-dia]').forEach(b => b.onclick = () => { dash.dia = dash.dia === b.dataset.dia ? null : b.dataset.dia; renderCalendario(); renderAgendaLista(); });
+}
+function renderAgendaLista() {
+  const lista = dash.dia ? dash.agenda.filter(x => x.venc === dash.dia) : dash.agenda;
+  if (dash.dia) { const [, mm, dd] = dash.dia.split('-'); $('agenda-dia-titulo').textContent = `${Number(dd)} de ${MESES[Number(mm) - 1].toLowerCase()}`; }
+  else $('agenda-dia-titulo').textContent = `${MESES[dash.calMes - 1]} — mês inteiro`;
+  const ab = lista.filter(x => x.status === 'em_aberto');
+  const rec = ab.filter(x => x.tipo === 'income').reduce((s, x) => s + x.valor, 0), pag = ab.filter(x => x.tipo === 'expense').reduce((s, x) => s + x.valor, 0);
+  $('agenda-dia-tot').innerHTML = lista.length ? `<span class="pos">+${esc(fmtBRL(rec))}</span> · <span class="neg">−${esc(fmtBRL(pag))}</span>` : '';
+  if (!lista.length) { $('agenda-itens').innerHTML = `<div class="ag-empty">${dash.dia ? 'Nenhuma conta vence neste dia.' : 'Nenhuma conta a pagar ou a receber neste mês.'}</div>`; return; }
+  let html = '', diaAnt = '';
+  lista.forEach((x, i) => {
+    if (!dash.dia && x.venc !== diaAnt) { diaAnt = x.venc; const dt = new Date(x.venc + 'T12:00'); html += `<div class="ag-day">${dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}</div>`; }
+    const st = x.status === 'quitado' ? '<span class="st on">Quitado</span>' : x.vencido ? '<span class="st late">Vencido</span>' : '<span class="st open">Em aberto</span>';
+    const quem = [x.cliente_fornecedor, x.categoria_nome].filter(Boolean).join(' · ') || (x.tipo === 'income' ? 'A receber' : 'A pagar');
+    html += `<div class="ag-item ${x.status === 'quitado' ? 'done' : ''}" data-i="${dash.agenda.indexOf(x)}" tabindex="0">
+      <span class="bar-s ${x.tipo === 'income' ? 'in' : 'out'}"></span>
+      <div class="tx"><b>${esc(x.descricao) || '<span class="dim">Sem descrição</span>'}</b><small>${esc(quem)}</small></div>
+      <div class="vl ${x.tipo === 'income' ? 'pos' : 'neg'}">${x.tipo === 'income' ? '+' : '−'} ${fmtBRL(x.valor)}<div>${st}</div></div></div>`;
+  });
+  $('agenda-itens').innerHTML = html;
+  $('agenda-itens').querySelectorAll('.ag-item').forEach(el => {
+    const abre = () => verTituloAgenda(dash.agenda[Number(el.dataset.i)]);
+    el.onclick = abre; el.onkeydown = e => { if (e.key === 'Enter') abre(); };
+  });
+}
+function verTituloAgenda(x) {
+  const botoes = [];
+  if (x.status === 'em_aberto' && pode('lancamentos')) botoes.push({ label: 'Dar baixa', cls: 'btn-gold', fn: async () => {
+    const r = await api('transactions/' + x.id, 'PATCH', { status: 'quitado', data_pagamento: hojeISO() });
+    if (r.error) return toast(r.error, 'err');
+    fecharModal('modal-view'); toast('Baixa registrada'); carregarDashboard();
+  } });
+  mostrarDetalhes(x.descricao || 'Título', `${x.tipo === 'income' ? 'Conta a receber' : 'Conta a pagar'} · ${fmtBRL(x.valor)}`, [
+    ['Vencimento', fmtData(x.venc)], ['Situação', x.status === 'quitado' ? `Quitado em ${fmtData(x.data_pagamento)}` : x.vencido ? 'Vencido' : 'Em aberto'],
+    [x.tipo === 'income' ? 'Cliente' : 'Fornecedor', x.cliente_fornecedor], ['Categoria', x.categoria_nome],
+    ['Forma de pagamento', x.forma_pagamento_nome], ['Caixa / Banco', x.caixa_nome], ['Data do lançamento', fmtData(x.data)],
+  ], botoes);
+}
+
+// ═══════════════════════════ FLUXO DE CAIXA ═══════════════════════════
+const fx = { dias: [], abertura: 0 };
+$('fx-mes').innerHTML = MESES.map((m, i) => `<option value="${i + 1}" ${i === hoje0.getMonth() ? 'selected' : ''}>${m}</option>`).join('');
+$('fx-ano').innerHTML = anosLista().map(a => `<option value="${a}" ${a === hoje0.getFullYear() ? 'selected' : ''}>${a}</option>`).join('');
+['fx-mes', 'fx-ano', 'fx-caixa'].forEach(id => $(id).addEventListener('change', carregarFluxo));
+$('fx-dias').addEventListener('change', renderFluxo);
+$('fx-toolbar').addEventListener('submit', e => { e.preventDefault(); carregarFluxo(); });
+function passoFluxo(delta) {
+  let m = Number($('fx-mes').value) + delta, a = Number($('fx-ano').value);
+  if (m < 1) { m = 12; a--; } if (m > 12) { m = 1; a++; }
+  if (![...$('fx-ano').options].some(o => Number(o.value) === a)) $('fx-ano').insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`);
+  $('fx-mes').value = String(m); $('fx-ano').value = String(a); carregarFluxo();
+}
+$('fx-prev').addEventListener('click', () => passoFluxo(-1));
+$('fx-next').addEventListener('click', () => passoFluxo(1));
+
+async function carregarFluxo() {
+  const qs = new URLSearchParams({ year: $('fx-ano').value, month: $('fx-mes').value });
+  if ($('fx-caixa').value) qs.set('caixa', $('fx-caixa').value);
+  const r = await api('dre/fluxo-caixa?' + qs);
+  if (r.error) { toast(r.error, 'err'); fx.dias = []; fx.abertura = 0; }
+  else { fx.dias = r.dias || []; fx.abertura = r.saldo_abertura || 0; }
+  renderFluxo();
+}
+function renderFluxo() {
+  const d = fx.dias, ult = d[d.length - 1] || { saldo: fx.abertura, saldo_projetado: fx.abertura };
+  const soma = k => d.reduce((s, x) => s + (x[k] || 0), 0);
+  $('fx-abertura').textContent = fmtBRLs(fx.abertura);
+  $('fx-rec').textContent = fmtBRL(soma('receita'));
+  $('fx-desp').textContent = fmtBRL(soma('despesa'));
+  $('fx-saldo').textContent = fmtBRLs(ult.saldo);
+  $('fx-saldo').classList.toggle('neg-on-dark', ult.saldo < 0);
+  $('fx-proj').textContent = fmtBRLs(ult.saldo_projetado);
+  const prev = soma('previsto');
+  $('fx-proj-sub').textContent = prev ? `${prev > 0 ? '+' : '−'} ${fmtBRL(Math.abs(prev))} em aberto no mês` : 'nada em aberto no mês';
+  const so = fv('fx-dias') === 'mov', hoje = hojeISO();
+  const linhas = d.filter(x => !so || x.receita || x.despesa || x.transferencia || x.receita_prevista || x.despesa_prevista || x.data === hoje);
+  const v = (n, cls = '') => n ? `<td class="money r ${cls}">${fmtBRL(n)}</td>` : '<td class="r dim">—</td>';
+  const vs = n => n ? `<td class="money r ${n < 0 ? 'neg' : 'pos'}">${fmtBRLs(n)}</td>` : '<td class="r dim">—</td>';
+  document.querySelector('#fx-table tbody').innerHTML = linhas.length ? linhas.map(x => {
+    const dt = new Date(x.data + 'T12:00'), fds = dt.getDay() === 0 || dt.getDay() === 6;
+    return `<tr class="${x.data === hoje ? 'today' : ''} ${fds ? 'weekend' : ''}">
+      <td class="nowrap num"><span class="ttl">${fmtData(x.data).slice(0, 5)}</span> <span class="dim">${dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</span></td>
+      ${v(x.receita, 'pos')}${v(x.despesa, 'neg')}${v(x.transferencia)}${vs(x.resultado)}
+      <td class="money r ${x.saldo < 0 ? 'neg' : ''}">${fmtBRLs(x.saldo)}</td>
+      ${x.previsto ? `<td class="money r ${x.previsto < 0 ? 'neg' : 'pos'}" title="A receber ${fmtBRL(x.receita_prevista)} · a pagar ${fmtBRL(x.despesa_prevista)}">${fmtBRLs(x.previsto)}</td>` : '<td class="r dim">—</td>'}
+      <td class="money r ${x.saldo_projetado < 0 ? 'neg' : ''}">${fmtBRLs(x.saldo_projetado)}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8" class="empty"><strong>Nenhuma movimentação neste mês</strong>Troque o mês ou veja “Todos os dias”.</td></tr>`;
+  document.querySelector('#fx-table tfoot').innerHTML = d.length ? `<tr><td>Total do mês</td><td class="r pos">${fmtBRL(soma('receita'))}</td><td class="r neg">${fmtBRL(soma('despesa'))}</td>
+    <td class="r">${fmtBRL(soma('transferencia'))}</td><td class="r">${fmtBRLs(soma('resultado'))}</td><td class="r">${fmtBRLs(ult.saldo)}</td><td class="r">${fmtBRLs(prev)}</td><td class="r">${fmtBRLs(ult.saldo_projetado)}</td></tr>` : '';
+}
+
+// ═══════════════════════════ CLIENTES ═══════════════════════════
+const cli = { lista: [], pagina: 1, editId: null };
+$('cli-uf').innerHTML = '<option value="">UF</option>' + UFS.map(u => `<option>${u}</option>`).join('');
+const maskDoc = v => soDigitos(v).length <= 11 ? maskCPF(v) : maskCNPJ(v);
+const docOk = v => { const n = soDigitos(v).length; return n === 14 ? cnpjValido(v) : n === 11 && cpfValido(v); };
+
+async function carregarClientes() {
+  const r = await api('clientes');
+  cli.lista = Array.isArray(r) ? r : [];
+  if (r.error) toast(r.error, 'err');
+  renderClientes();
+}
+function renderClientes() {
+  const t = norm($('cli-f-busca').value.trim()), td = soDigitos(t);
+  const lista = cli.lista.filter(x => !t || [x.nome, x.razao_social, x.cidade, x.email].some(v => norm(v).includes(t)) || (td && soDigitos(x.cnpj_cpf).includes(td)));
+  const { itens, pagina, total, n } = paginar(lista, cli.pagina); cli.pagina = pagina;
+  document.querySelector('#cli-table tbody').innerHTML = itens.length ? itens.map(x => {
+    menuAcoes['cli' + x.id] = [
+      { label: 'Visualizar', fn: () => verCliente(x) },
+      { label: 'Editar', fn: () => abrirCliente(x) },
+      { label: 'Apagar', danger: true, fn: () => apagarCliente(x) },
+    ];
+    return `<tr>
+      <td><div class="who">${avatar(x.nome)}<div style="min-width:0"><span class="ttl">${esc(x.nome)}</span>${x.razao_social ? `<small>${esc(x.razao_social)}</small>` : ''}</div></div></td>
+      <td class="nowrap num">${esc(x.cnpj_cpf) || '<span class="dim">—</span>'}</td>
+      <td class="nowrap">${x.cidade || x.estado ? esc([x.cidade, x.estado].filter(Boolean).join(' / ')) : '<span class="dim">—</span>'}</td>
+      <td class="nowrap">${x.telefone ? linkWhats(x.telefone) : '<span class="dim">—</span>'}</td>
+      <td class="wrap">${x.email ? `<a class="wa" href="mailto:${esc(x.email)}">${esc(x.email)}</a>` : '<span class="dim">—</span>'}</td>
+      <td class="money r">${x.total_receitas ? fmtBRL(x.total_receitas) : '<span class="dim">—</span>'}</td>
+      <td class="r">${kebab('cli' + x.id)}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7" class="empty">${cli.lista.length ? '<strong>Nada encontrado</strong>Tente outro termo.' : '<strong>Nenhum cliente cadastrado</strong>Clique em “Novo cliente” para começar.'}</td></tr>`;
+  renderPager('cli-pager', pagina, total, p => { cli.pagina = p; renderClientes(); }, n);
+  $('cli-count').textContent = n === 1 ? '1 cliente' : `${n} clientes`;
+}
+$('cli-toolbar').addEventListener('submit', e => { e.preventDefault(); carregarClientes(); });
+$('cli-f-busca').addEventListener('input', () => { cli.pagina = 1; renderClientes(); });
+
+function hintDocCli() {
+  const v = $('cli-doc').value, n = soDigitos(v).length, h = $('cli-doc-hint');
+  $('btn-cli-cnpj').disabled = n !== 14;
+  if (!n) { h.textContent = ''; h.className = 'hint'; return; }
+  if (n !== 11 && n !== 14) { h.textContent = `${n} dígitos`; h.className = 'hint'; return; }
+  const ok = docOk(v);
+  h.textContent = ok ? `✓ ${n === 11 ? 'CPF' : 'CNPJ'} válido` : `✕ ${n === 11 ? 'CPF' : 'CNPJ'} inválido`;
+  h.className = 'hint ' + (ok ? 'ok' : 'err');
+}
+$('cli-doc').addEventListener('input', e => { e.target.value = maskDoc(e.target.value); hintDocCli(); });
+$('cli-tel').addEventListener('input', e => { e.target.value = maskTel(e.target.value); });
+$('btn-cli-cnpj').addEventListener('click', async () => {
+  const dig = soDigitos($('cli-doc').value), btn = $('btn-cli-cnpj'), h = $('cli-doc-hint');
+  if (!cnpjValido(dig)) return hintDocCli();
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${dig}`);
+    if (!r.ok) throw new Error(r.status === 404 ? 'CNPJ não encontrado na Receita' : 'Consulta indisponível agora');
+    const d = await r.json();
+    const set = (id, v) => { if (v && !$(id).value.trim()) $(id).value = v; };
+    set('cli-razao', d.razao_social); set('cli-nome', d.nome_fantasia || d.razao_social); set('cli-email', (d.email || '').toLowerCase());
+    set('cli-endereco', [[d.descricao_tipo_de_logradouro, d.logradouro].filter(Boolean).join(' '), d.numero, d.complemento, d.bairro, d.cep && `CEP ${d.cep}`].filter(Boolean).join(', '));
+    set('cli-cidade', d.municipio); if (d.uf && !$('cli-uf').value) $('cli-uf').value = d.uf;
+    if (d.ddd_telefone_1) set('cli-tel', maskTel(d.ddd_telefone_1));
+    h.textContent = `✓ ${d.descricao_situacao_cadastral || 'Encontrado'} na Receita`; h.className = 'hint ' + ((d.descricao_situacao_cadastral || 'ATIVA') === 'ATIVA' ? 'ok' : 'err');
+  } catch (e) { h.textContent = e.message || 'Consulta indisponível agora'; h.className = 'hint err'; }
+  finally { btn.textContent = 'Buscar'; btn.disabled = false; }
+});
+
+function abrirCliente(x = null) {
+  cli.editId = x ? x.id : null;
+  $('cli-modal-title').textContent = x ? 'Editar Cliente' : 'Novo Cliente';
+  $('cli-error').textContent = '';
+  $('cli-nome').value = x ? x.nome || '' : ''; $('cli-razao').value = x ? x.razao_social || '' : '';
+  $('cli-doc').value = x ? maskDoc(x.cnpj_cpf || '') : ''; $('cli-email').value = x ? x.email || '' : '';
+  $('cli-tel').value = x ? maskTel(x.telefone || '') : '';
+  const uf = x && x.estado ? String(x.estado).toUpperCase() : '';
+  if (uf && !UFS.includes(uf) && ![...$('cli-uf').options].some(o => o.value === uf)) $('cli-uf').insertAdjacentHTML('beforeend', `<option>${esc(uf)}</option>`);
+  $('cli-uf').value = uf; $('cli-cidade').value = x ? x.cidade || '' : '';
+  $('cli-endereco').value = x ? x.endereco || '' : ''; $('cli-obs').value = x ? x.observacoes || '' : '';
+  hintDocCli();
+  abrirModal('modal-cli');
+}
+$('btn-novo-cliente').addEventListener('click', () => abrirCliente());
+$('cli-form').addEventListener('submit', e => { e.preventDefault(); $('btn-salvar-cli').click(); });
+$('btn-salvar-cli').addEventListener('click', async () => {
+  const body = { nome: $('cli-nome').value.trim(), razao_social: $('cli-razao').value.trim(), cnpj_cpf: $('cli-doc').value.trim(),
+    email: $('cli-email').value.trim(), telefone: $('cli-tel').value.trim(), estado: $('cli-uf').value, cidade: $('cli-cidade').value.trim(),
+    endereco: $('cli-endereco').value.trim(), observacoes: $('cli-obs').value.trim() };
+  if (!body.nome) { $('cli-error').textContent = 'Informe o nome do cliente.'; return; }
+  if (body.cnpj_cpf && !docOk(body.cnpj_cpf)) { $('cli-error').textContent = 'CPF/CNPJ inválido — confira os números.'; return; }
+  const btn = $('btn-salvar-cli'); btn.disabled = true;
+  const r = cli.editId ? await api('clientes/' + cli.editId, 'PUT', body) : await api('clientes', 'POST', body);
+  btn.disabled = false;
+  if (r.error) { $('cli-error').textContent = r.error; return; }
+  fecharModal('modal-cli'); toast(cli.editId ? 'Cliente atualizado' : 'Cliente cadastrado');
+  carregarClientes(); carregarCadastros();
+});
+async function apagarCliente(x) {
+  if (!await confirmar(`Apagar o cliente "${x.nome}"?${x.qtd_lanc ? `\n\nOs ${x.qtd_lanc} lançamento(s) dele continuam no sistema com o nome gravado.` : ''}`, { ok: 'Apagar' })) return;
+  const r = await api('clientes/' + x.id, 'DELETE');
+  if (r.error) return toast(r.error, 'err');
+  toast('Cliente apagado'); carregarClientes(); carregarCadastros();
+}
+function verCliente(x) {
+  const botoes = [{ label: 'Editar', fn: () => { fecharModal('modal-view'); abrirCliente(x); } }];
+  if (pode('lancamentos') && x.qtd_lanc) botoes.unshift({ label: 'Ver lançamentos', cls: 'btn-gold', fn: () => {
+    fecharModal('modal-view');
+    $('tx-f-busca').value = x.nome; $('tx-f-ano').value = ''; $('tx-f-mes').value = ''; $('tx-f-categoria').value = ''; fset('tx-f-tipo', ''); $('tx-f-status').value = '';
+    location.hash = 'lancamentos'; if (state.page === 'lancamentos') carregarLancamentos();
+  } });
+  mostrarDetalhes(x.nome, x.razao_social || '', [
+    ['CPF / CNPJ', x.cnpj_cpf], ['Telefone', x.telefone], ['E-mail', x.email],
+    ['Endereço', x.endereco], ['Cidade / UF', [x.cidade, x.estado].filter(Boolean).join(' / ')],
+    ['Lançamentos', String(x.qtd_lanc || 0)], ['Total recebido', fmtBRL(x.total_receitas)],
+    ['Observações', x.observacoes], ['Cadastrado em', fmtData(x.created_at)],
+  ], botoes);
+}
+
+// ═══════════════════════════ CAIXAS / BANCO (admin) ═══════════════════════════
+const cx = { lista: [], editId: null, sem: { saldo: 0, qtd: 0 } };
+const CX_TIPO = { banco: 'Conta bancária', caixa: 'Caixa físico', investimento: 'Investimento' };
+async function carregarCaixas() {
+  const r = await api('caixas');
+  cx.lista = r && Array.isArray(r.caixas) ? r.caixas : [];
+  cx.sem = r && r.sem_caixa ? r.sem_caixa : { saldo: 0, qtd: 0 };
+  if (r.error) toast(r.error, 'err');
+  renderCaixas();
+}
+function renderCaixas() {
+  const soma = (f, k) => cx.lista.filter(f).reduce((s, x) => s + x[k], 0);
+  const tot = soma(() => true, 'saldo_atual');
+  $('cx-total').textContent = fmtBRLs(tot); $('cx-total').classList.toggle('neg-on-dark', tot < 0);
+  $('cx-bancos').textContent = fmtBRLs(soma(x => x.tipo !== 'caixa', 'saldo_atual'));
+  $('cx-fisico').textContent = fmtBRLs(soma(x => x.tipo === 'caixa', 'saldo_atual'));
+  $('cx-previsto').textContent = fmtBRLs(tot + soma(() => true, 'a_receber') - soma(() => true, 'a_pagar'));
+  document.querySelector('#cx-table tbody').innerHTML = cx.lista.length ? cx.lista.map(x => {
+    menuAcoes['cx' + x.id] = [
+      { label: 'Editar', fn: () => abrirCaixa(x) },
+      { label: 'Apagar', danger: true, fn: () => apagarCaixa(x) },
+    ];
+    return `<tr>
+      <td><div class="who">${avatar(x.nome)}<div><span class="ttl">${esc(x.nome)}</span><small><span class="tp ${esc(x.tipo)}" style="padding:0 7px;font-size:11.5px">${CX_TIPO[x.tipo] || esc(x.tipo)}</span></small></div></div></td>
+      <td>${esc(x.banco) || '<span class="dim">—</span>'}</td>
+      <td class="num">${esc(x.agencia) || '<span class="dim">—</span>'}</td>
+      <td class="num">${esc(x.conta) || '<span class="dim">—</span>'}</td>
+      <td class="money r" style="font-weight:600">${fmtBRLs(x.saldo_inicial)}</td>
+      <td class="money r ${x.saldo_atual < 0 ? 'neg' : ''}">${fmtBRLs(x.saldo_atual)}</td>
+      <td class="money r">${x.a_receber ? `<span class="pos">${fmtBRL(x.a_receber)}</span>` : '<span class="dim">—</span>'}</td>
+      <td class="money r">${x.a_pagar ? `<span class="neg">${fmtBRL(x.a_pagar)}</span>` : '<span class="dim">—</span>'}</td>
+      <td class="r">${kebab('cx' + x.id)}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="9" class="empty"><strong>Nenhuma conta ou caixa</strong>Cadastre as contas bancárias e caixas da empresa.</td></tr>';
+  $('cx-aviso').innerHTML = cx.sem.qtd ? `⚠ ${cx.sem.qtd} lançamento(s) estão sem caixa/banco definido (${fmtBRLs(cx.sem.saldo)} já quitados). Eles aparecem no Fluxo de Caixa “Todos os caixas”, mas não no saldo de nenhuma conta — edite esses lançamentos e escolha o caixa.` : '';
+}
+function atualizarTipoCaixa() { $('cx-banco-wrap').classList.toggle('hidden', segValor('cx-tipo-seg') === 'caixa'); }
+$('cx-tipo-seg').addEventListener('change', atualizarTipoCaixa);
+function abrirCaixa(x = null) {
+  cx.editId = x ? x.id : null;
+  $('cx-modal-title').textContent = x ? 'Editar conta / caixa' : 'Nova conta / caixa';
+  $('cx-error').textContent = '';
+  segSet('cx-tipo-seg', x ? x.tipo : 'banco');
+  $('cx-nome').value = x ? x.nome : ''; $('cx-banco').value = x ? x.banco || '' : '';
+  $('cx-agencia').value = x ? x.agencia || '' : ''; $('cx-conta').value = x ? x.conta || '' : '';
+  $('cx-saldo').value = x ? x.saldo_inicial : ''; $('cx-obs').value = x ? x.observacoes || '' : '';
+  atualizarTipoCaixa();
+  abrirModal('modal-cx');
+}
+$('btn-novo-caixa').addEventListener('click', () => abrirCaixa());
+$('cx-form').addEventListener('submit', e => { e.preventDefault(); $('btn-salvar-cx').click(); });
+$('btn-salvar-cx').addEventListener('click', async () => {
+  const body = { tipo: segValor('cx-tipo-seg'), nome: $('cx-nome').value.trim(), banco: $('cx-banco').value.trim(), agencia: $('cx-agencia').value.trim(),
+    conta: $('cx-conta').value.trim(), saldo_inicial: parseFloat($('cx-saldo').value) || 0, observacoes: $('cx-obs').value.trim() };
+  if (!body.nome) { $('cx-error').textContent = 'Informe o nome da conta ou caixa.'; return; }
+  const r = cx.editId ? await api('caixas/' + cx.editId, 'PUT', body) : await api('caixas', 'POST', body);
+  if (r.error) { $('cx-error').textContent = r.error; return; }
+  fecharModal('modal-cx'); toast(cx.editId ? 'Conta atualizada' : 'Conta cadastrada');
+  carregarCaixas(); carregarCadastros();
+});
+async function apagarCaixa(x) {
+  if (x.qtd_lanc) { toast(`"${x.nome}" tem lançamentos. Renomeie em vez de apagar.`, 'err'); return; }
+  if (!await confirmar(`Apagar "${x.nome}"?`, { ok: 'Apagar' })) return;
+  const r = await api('caixas/' + x.id, 'DELETE');
+  if (r.error) return toast(r.error, 'err');
+  toast('Conta apagada'); carregarCaixas(); carregarCadastros();
+}
+
+// ═══════════════════════════ FORMAS DE PAGAMENTO (admin) ═══════════════════════════
+const fp = { lista: [], editId: null };
+const FP_TIPO = { credito: 'Cartão de crédito', debito: 'Cartão de débito', pix: 'PIX', boleto: 'Boleto', dinheiro: 'Dinheiro' };
+const pct = v => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '%';
+async function carregarFormas() {
+  const r = await api('formas_pagamento');
+  fp.lista = Array.isArray(r) ? r : [];
+  if (r.error) toast(r.error, 'err');
+  renderFormas();
+}
+function renderFormas() {
+  const tipo = fv('fp-f-tipo');
+  const lista = fp.lista.filter(x => !tipo || x.tipo === tipo);
+  document.querySelector('#fp-table tbody').innerHTML = lista.length ? lista.map(x => {
+    menuAcoes['fp' + x.id] = [
+      { label: 'Editar', fn: () => abrirForma(x) },
+      { label: 'Apagar', danger: true, fn: () => apagarForma(x) },
+    ];
+    return `<tr>
+      <td><span class="ttl">${esc(x.nome)}</span>${x.qtd_lanc ? `<small>${x.qtd_lanc} lançamento(s)</small>` : ''}</td>
+      <td>${x.tipo ? `<span class="tp ${esc(x.tipo)}">${FP_TIPO[x.tipo] || esc(x.tipo)}</span>` : '<span class="tp boleto">Definir tipo</span>'}</td>
+      <td>${x.banco || x.agencia ? esc([x.banco, x.agencia && 'ag. ' + x.agencia].filter(Boolean).join(' · ')) : '<span class="dim">—</span>'}</td>
+      <td class="r num">${x.parcelas}x</td>
+      <td class="r num">${x.dias_recebimento ? `D+${x.dias_recebimento}` : 'na hora'}</td>
+      <td class="r num">${x.taxa_intermediacao ? pct(x.taxa_intermediacao) : '<span class="dim">—</span>'}</td>
+      <td class="r num">${x.taxa_parcelamento ? pct(x.taxa_parcelamento) : '<span class="dim">—</span>'}</td>
+      <td class="money r" style="font-weight:600">${x.tarifa_fixa ? fmtBRL(x.tarifa_fixa) : '<span class="dim">—</span>'}</td>
+      <td class="r">${kebab('fp' + x.id)}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="9" class="empty">${fp.lista.length ? '<strong>Nenhuma forma desse tipo</strong>Troque o filtro.' : '<strong>Nenhuma forma de pagamento</strong>Cadastre cartões, PIX, boleto e dinheiro.'}</td></tr>`;
+  $('fp-count').textContent = lista.length === 1 ? '1 forma' : `${lista.length} formas`;
+}
+$('fp-f-tipo').addEventListener('change', renderFormas);
+
+function atualizarTipoForma() {
+  const t = segValor('fp-tipo-seg');
+  document.querySelectorAll('#modal-fp .fp-credito').forEach(el => el.classList.toggle('hidden', t !== 'credito'));
+  document.querySelectorAll('#modal-fp .fp-banco').forEach(el => el.classList.toggle('hidden', t === 'dinheiro'));
+  simularForma();
+}
+function simularForma() {
+  const t = segValor('fp-tipo-seg'), taxa = parseFloat($('fp-taxa').value) || 0, tarifa = parseFloat($('fp-tarifa').value) || 0;
+  const dias = parseInt($('fp-dias').value, 10) || 0, parc = parseInt($('fp-parcelas').value, 10) || 1, tparc = parseFloat($('fp-taxa-parc').value) || 0;
+  const desc = taxa / 100 * 100 + tarifa;
+  let html = `Numa venda de <strong>R$ 100,00</strong> a empresa recebe <strong>${fmtBRL(100 - desc)}</strong> ${dias ? `em <strong>D+${dias}</strong>` : '<strong>na hora</strong>'}`
+    + (desc ? ` (desconto de ${fmtBRL(desc)} = intermediação${tarifa ? ' + tarifa fixa' : ''}).` : '.');
+  if (t === 'credito' && (parc > 1 || tparc)) html += `<br/><span class="muted">Parcelado em até ${parc}x${tparc ? ` com taxa de parcelamento de ${pct(tparc)}` : ''}. A taxa de parcelamento fica registrada como referência — o desconto automático nos lançamentos usa intermediação + tarifa fixa.</span>`;
+  $('fp-simula').innerHTML = html;
+}
+$('fp-tipo-seg').addEventListener('change', atualizarTipoForma);
+['fp-taxa', 'fp-tarifa', 'fp-dias', 'fp-parcelas', 'fp-taxa-parc'].forEach(id => $(id).addEventListener('input', simularForma));
+function abrirForma(x = null) {
+  fp.editId = x ? x.id : null;
+  $('fp-modal-title').textContent = x ? 'Editar forma de pagamento' : 'Nova forma de pagamento';
+  $('fp-error').textContent = '';
+  segSet('fp-tipo-seg', x && x.tipo ? x.tipo : (fv('fp-f-tipo') || 'credito'));
+  $('fp-nome').value = x ? x.nome : ''; $('fp-banco').value = x ? x.banco || '' : ''; $('fp-agencia').value = x ? x.agencia || '' : '';
+  $('fp-parcelas').value = x ? x.parcelas : 1; $('fp-dias').value = x ? x.dias_recebimento : 0;
+  $('fp-taxa').value = x && x.taxa_intermediacao ? x.taxa_intermediacao : ''; $('fp-taxa-parc').value = x && x.taxa_parcelamento ? x.taxa_parcelamento : '';
+  $('fp-tarifa').value = x && x.tarifa_fixa ? x.tarifa_fixa : '';
+  atualizarTipoForma();
+  abrirModal('modal-fp');
+}
+$('btn-nova-forma').addEventListener('click', () => abrirForma());
+$('fp-form').addEventListener('submit', e => { e.preventDefault(); $('btn-salvar-fp').click(); });
+$('btn-salvar-fp').addEventListener('click', async () => {
+  const body = { tipo: segValor('fp-tipo-seg'), nome: $('fp-nome').value.trim(), banco: $('fp-banco').value.trim(), agencia: $('fp-agencia').value.trim(),
+    parcelas: parseInt($('fp-parcelas').value, 10) || 1, dias_recebimento: parseInt($('fp-dias').value, 10) || 0,
+    taxa_intermediacao: parseFloat($('fp-taxa').value) || 0, taxa_parcelamento: parseFloat($('fp-taxa-parc').value) || 0, tarifa_fixa: parseFloat($('fp-tarifa').value) || 0 };
+  if (!body.nome) { $('fp-error').textContent = 'Informe o nome da forma de pagamento.'; return; }
+  const r = fp.editId ? await api('formas_pagamento/' + fp.editId, 'PUT', body) : await api('formas_pagamento', 'POST', body);
+  if (r.error) { $('fp-error').textContent = r.error; return; }
+  fecharModal('modal-fp'); toast(fp.editId ? 'Forma de pagamento atualizada' : 'Forma de pagamento cadastrada');
+  carregarFormas(); carregarCadastros();
+});
+async function apagarForma(x) {
+  if (x.qtd_lanc) { toast(`"${x.nome}" está em ${x.qtd_lanc} lançamento(s). Edite em vez de apagar.`, 'err'); return; }
+  if (!await confirmar(`Apagar a forma de pagamento "${x.nome}"?`, { ok: 'Apagar' })) return;
+  const r = await api('formas_pagamento/' + x.id, 'DELETE');
+  if (r.error) return toast(r.error, 'err');
+  toast('Forma de pagamento apagada'); carregarFormas(); carregarCadastros();
+}
+
+// ═══════════════════════════ LOGS ═══════════════════════════
+const LOG_ACOES = { create: ['Criação', 'act-create'], update: ['Alteração', 'act-update'], delete: ['Exclusão', 'act-delete'],
+  baixa: ['Baixa', 'act-create'], update_status: ['Situação', 'act-update'], update_role: ['Nível de acesso', 'act-warn'],
+  login: ['Login', 'act-auth'], logout: ['Logout', 'act-auth'], login_failed: ['Login falhou', 'act-delete'], setup_admin: ['Config. inicial', 'act-warn'] };
+const LOG_AREAS = { transactions: 'Lançamentos', transfers: 'Transferências', clientes: 'Clientes', fornecedores: 'Fornecedores', parceiros: 'Parceiros',
+  categorias: 'Categorias', caixas: 'Caixas / Banco', formas_pagamento: 'Formas de pagamento', users: 'Usuários', auth: 'Autenticação',
+  documentos: 'Documentos', contas_receita: 'Contas de receita', contas_despesa: 'Contas de despesa', centros_custo: 'Centros de custo' };
+const LOG_POR_PAGINA = 20;
+// "income - Aluguel - R$1200" (formato gravado pelos lançamentos) → "Receita · Aluguel · R$ 1.200,00"
+function detalheLog(d) {
+  return String(d)
+    .replace(/^(income|expense) - /, (_, t) => (t === 'income' ? 'Receita' : 'Despesa') + ' · ')
+    .replace(/ - R\$(-?[\d.]+)/g, (_, v) => ' · ' + fmtBRL(parseFloat(v)))
+    .replace(/R\$(-?\d+(?:\.\d+)?)(?=\s|$|;)/g, (_, v) => fmtBRL(parseFloat(v)))
+    .replace(/tipo: (income|expense) → (income|expense)/, (_, a, b) => `tipo: ${a === 'income' ? 'receita' : 'despesa'} → ${b === 'income' ? 'receita' : 'despesa'}`)
+    .replace(/em_aberto/g, 'em aberto');
+}
+const lg = { pagina: 1 };
+$('log-f-acao').innerHTML = '<option value="">Todas as ações</option>' + Object.entries(LOG_ACOES).map(([k, [l]]) => `<option value="${k}">${l}</option>`).join('');
+$('log-f-area').innerHTML = '<option value="">Todas as áreas</option>' + Object.entries(LOG_AREAS).map(([k, l]) => `<option value="${k}">${l}</option>`).join('');
+async function carregarLogs() {
+  const qs = new URLSearchParams({ page: lg.pagina, limit: LOG_POR_PAGINA });
+  [['action', 'log-f-acao'], ['entity', 'log-f-area'], ['username', 'log-f-user'], ['from', 'log-f-de'], ['to', 'log-f-ate']].forEach(([k, id]) => { const v = $(id).value.trim(); if (v) qs.set(k, v); });
+  const r = await api('logs?' + qs);
+  if (r.error) { toast(r.error, 'err'); return; }
+  const rows = r.rows || [];
+  document.querySelector('#log-table tbody').innerHTML = rows.length ? rows.map(x => {
+    const [lbl, cls] = LOG_ACOES[x.action] || [x.action, 'act-auth'];
+    const dt = new Date(String(x.created_at).replace(' ', 'T'));
+    return `<tr>
+      <td class="nowrap num">${dt.toLocaleDateString('pt-BR')} <span class="dim">${dt.toLocaleTimeString('pt-BR')}</span></td>
+      <td class="nowrap">${x.username ? `<span class="ttl">${esc(x.username)}</span>` : '<span class="dim">—</span>'}</td>
+      <td><span class="st ${cls}">${esc(lbl)}</span></td>
+      <td class="nowrap">${esc(LOG_AREAS[x.entity] || x.entity)}${x.entity_id ? ` <span class="dim">#${x.entity_id}</span>` : ''}</td>
+      <td class="det">${x.details ? esc(detalheLog(x.details)) : '<span class="dim">—</span>'}</td>
+      <td class="nowrap num dim">${esc(x.ip) || '—'}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty"><strong>Nenhum registro</strong>Ajuste os filtros.</td></tr>';
+  renderPager('log-pager', r.page, r.pages, p => { lg.pagina = p; carregarLogs(); }, r.total, LOG_POR_PAGINA);
+  $('log-count').textContent = r.total === 1 ? '1 registro' : `${r.total} registros`;
+}
+['log-f-acao', 'log-f-area', 'log-f-de', 'log-f-ate'].forEach(id => $(id).addEventListener('change', () => { lg.pagina = 1; carregarLogs(); }));
+let logBuscaT = null;
+$('log-f-user').addEventListener('input', () => { clearTimeout(logBuscaT); logBuscaT = setTimeout(() => { lg.pagina = 1; carregarLogs(); }, 300); });
+$('log-toolbar').addEventListener('submit', e => { e.preventDefault(); lg.pagina = 1; carregarLogs(); });
+$('log-limpar').addEventListener('click', () => { ['log-f-acao', 'log-f-area', 'log-f-user', 'log-f-de', 'log-f-ate'].forEach(id => $(id).value = ''); lg.pagina = 1; carregarLogs(); });
 
 // ═══════════════════════════ PERFIL ═══════════════════════════
 $('btn-perfil').addEventListener('click', () => {

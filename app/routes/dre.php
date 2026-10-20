@@ -98,7 +98,19 @@ Router::get('dre/fluxo-caixa', function () {
         if ($filtra && $t['destino_nome'] === $caixa) $acc[$d]['trIn'] += $v;
         if ($filtra && $t['origem_nome'] === $caixa) $acc[$d]['trOut'] += $v;
     }
-    $saldo = $si; $saldoProj = $si; $out = [];
+    // Saldo de abertura do mês = saldo inicial dos caixas + tudo que foi realizado
+    // ANTES do dia 1 (assim cada mês continua de onde o anterior parou).
+    $ini = sprintf('%04d-%02d-01', $y, $m);
+    $sqlAnt = "SELECT COALESCE(SUM(CASE WHEN tipo='income' THEN valor ELSE -valor END),0) v FROM transactions
+               WHERE status='quitado' AND COALESCE(data_pagamento, data) < ?";
+    $pA = [$ini];
+    if ($filtra) { $sqlAnt .= ' AND caixa_nome=?'; $pA[] = $caixa; }
+    $abertura = $si + (float) q1($sqlAnt, $pA)['v'];
+    if ($filtra) {
+        $abertura += (float) q1('SELECT COALESCE(SUM(valor),0) v FROM transfers WHERE data < ? AND destino_nome=?', [$ini, $caixa])['v'];
+        $abertura -= (float) q1('SELECT COALESCE(SUM(valor),0) v FROM transfers WHERE data < ? AND origem_nome=?', [$ini, $caixa])['v'];
+    }
+    $saldo = $abertura; $saldoProj = $abertura; $out = [];
     for ($d = 1; $d <= $n; $d++) {
         $a = $acc[$d];
         $resultado = $a['rec'] - $a['desp'] + $a['trIn'] - $a['trOut'];
@@ -111,7 +123,7 @@ Router::get('dre/fluxo-caixa', function () {
             'receita_prevista' => $a['recP'], 'despesa_prevista' => $a['despP'], 'previsto' => $previsto, 'saldo_projetado' => $saldoProj,
         ];
     }
-    return $out;
+    return ['saldo_abertura' => round($abertura, 2), 'dias' => $out];
 });
 
 function cal_days_in_month_safe(int $m, int $y): int { return (int) (new DateTime("$y-$m-01"))->format('t'); }
@@ -175,5 +187,38 @@ Router::get('dre', function () {
         'expensesByCategory' => $temCategoria ? $porCategoria : $porGrupo,
         'categoryColors' => $temCategoria ? $cores : (object) [],
         'year' => (string) $y,
+        'emAberto' => em_aberto_resumo(),
+        'saldoCaixas' => array_sum(array_column(caixas_com_saldo(), 'saldo_atual')),
     ];
+});
+
+/** Totais em aberto (independe do ano): a receber, a pagar e quanto disso já venceu. */
+function em_aberto_resumo(): array {
+    $r = q1("SELECT
+        COALESCE(SUM(CASE WHEN tipo='income'  THEN valor END),0) a_receber,
+        COALESCE(SUM(CASE WHEN tipo='expense' THEN valor END),0) a_pagar,
+        COALESCE(SUM(CASE WHEN tipo='income'  AND COALESCE(data_vencimento,data)<CURDATE() THEN valor END),0) receber_vencido,
+        COALESCE(SUM(CASE WHEN tipo='expense' AND COALESCE(data_vencimento,data)<CURDATE() THEN valor END),0) pagar_vencido,
+        SUM(CASE WHEN COALESCE(data_vencimento,data)<CURDATE() THEN 1 ELSE 0 END) qtd_vencidos
+      FROM transactions WHERE status='em_aberto'");
+    return array_map('floatval', $r);
+}
+
+// Agenda de vencimentos (calendário do Dashboard): contas a pagar e a receber do mês.
+// Entra o que tem vencimento no mês (quitado ou não) e o que está em aberto sem
+// vencimento definido (aí vale a data do lançamento).
+Router::get('agenda', function () {
+    permitir('dashboard');
+    $y = ano_param();
+    $m = max(1, min(12, (int) qs('month', date('n'))));
+    $rows = q("SELECT id, tipo, descricao, valor, status, cliente_fornecedor, categoria_nome, forma_pagamento_nome, caixa_nome,
+                      data, data_vencimento, data_pagamento, COALESCE(data_vencimento, data) AS venc
+               FROM transactions
+               WHERE (data_vencimento IS NOT NULL OR status='em_aberto')
+                 AND YEAR(COALESCE(data_vencimento, data))=? AND MONTH(COALESCE(data_vencimento, data))=?
+               ORDER BY venc, tipo, id", [$y, $m]);
+    $hoje = date('Y-m-d');
+    return array_map(fn($r) => ['id' => (int) $r['id'], 'valor' => (float) $r['valor'],
+        'venc' => substr((string) $r['venc'], 0, 10),
+        'vencido' => $r['status'] === 'em_aberto' && substr((string) $r['venc'], 0, 10) < $hoje] + $r, $rows);
 });

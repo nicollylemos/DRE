@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="icon" type="image/png" href="img/logo-oaf-mark.png"/>
 <link rel="stylesheet" href="css/style.css"/>
 </head>
 <body>
@@ -14,7 +15,7 @@
 <!-- ═══════════════════════ LOGIN ═══════════════════════ -->
 <div id="auth-screen" class="auth-screen hidden">
   <div class="auth-card">
-    <img class="auth-logo" src="img/logo-oaf.png" onerror="this.onerror=null;this.src='img/logo-oaf.svg'" alt="OAF"/>
+    <img class="auth-logo" src="img/logo-oaf.png" onerror="this.onerror=null;this.src='img/logo-oaf.svg'" alt="OAF Benefícios e Consultoria"/>
     <h1>Controle Financeiro</h1>
     <p class="auth-sub">Entre com seu usuário para continuar</p>
 
@@ -33,6 +34,7 @@
       <button class="btn btn-gold btn-block" type="submit">Criar acesso inicial</button>
       <div class="form-error" id="setup-error"></div>
     </form>
+    <p class="auth-version" id="auth-version"></p>
   </div>
 </div>
 
@@ -40,29 +42,107 @@
 <div id="app" class="app hidden">
 
   <aside class="sidebar">
-    <a class="side-brand" href="#lancamentos" title="OAF">OAF</a>
+    <a class="side-brand" id="side-brand" href="#dashboard" title="OAF — página inicial"><img src="img/logo-oaf-mark.png" alt="OAF"/></a>
     <nav class="side-nav" id="side-nav">
+      <a href="#dashboard" class="side-btn" data-page="dashboard" data-label="Dashboard">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="9" rx="2"/><rect x="13.5" y="3" width="7.5" height="5.5" rx="2"/><rect x="13.5" y="11.5" width="7.5" height="9.5" rx="2"/><rect x="3" y="15" width="7.5" height="6" rx="2"/></svg>
+      </a>
       <a href="#lancamentos" class="side-btn" data-page="lancamentos" data-label="Lançamentos">
         <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg>
       </a>
-      <a href="#parceiros" class="side-btn" data-page="parceiros" data-label="Parceiros">
-        <svg viewBox="0 0 24 24"><path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/></svg>
+      <a href="#fluxo" class="side-btn" data-page="fluxo" data-label="Fluxo de Caixa">
+        <svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+      </a>
+      <span class="side-sep"></span>
+      <a href="#clientes" class="side-btn" data-page="clientes" data-label="Clientes">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 21c.8-4 3.8-6.2 7.5-6.2s6.7 2.2 7.5 6.2"/></svg>
       </a>
       <a href="#fornecedores" class="side-btn" data-page="fornecedores" data-label="Fornecedores">
         <svg viewBox="0 0 24 24"><path d="M3 9.5 4.6 4h14.8L21 9.5"/><path d="M4 9.5v10.5h16V9.5"/><path d="M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M10 20v-5h4v5"/></svg>
       </a>
+      <a href="#parceiros" class="side-btn" data-page="parceiros" data-label="Parceiros">
+        <svg viewBox="0 0 24 24"><path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/></svg>
+      </a>
       <a href="#categorias" class="side-btn" data-page="categorias" data-label="Categorias">
         <svg viewBox="0 0 24 24"><path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1.4"/></svg>
       </a>
-      <span class="side-sep" id="side-sep"></span>
-      <a href="#usuarios" class="side-btn hidden" data-page="usuarios" data-label="Usuários" id="nav-usuarios">
+      <a href="#caixas" class="side-btn" data-page="caixas" data-label="Caixas / Banco">
+        <svg viewBox="0 0 24 24"><path d="M3 9.5 12 4l9 5.5"/><path d="M5 10v8M9.7 10v8M14.3 10v8M19 10v8"/><path d="M3 20.5h18"/></svg>
+      </a>
+      <a href="#formas" class="side-btn" data-page="formas" data-label="Formas de pagamento">
+        <svg viewBox="0 0 24 24"><path d="M19 7V5.5A1.5 1.5 0 0 0 17.5 4h-12A2.5 2.5 0 0 0 3 6.5v11A2.5 2.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/><path d="M3 6.5A2.5 2.5 0 0 0 5.5 9h13A1.5 1.5 0 0 1 20 10.5V16h-4a2 2 0 0 1 0-4.5h4"/></svg>
+      </a>
+      <span class="side-sep"></span>
+      <a href="#usuarios" class="side-btn" data-page="usuarios" data-label="Usuários">
         <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.7.8 2.8 2.6 3 5.2"/></svg>
+      </a>
+      <a href="#logs" class="side-btn" data-page="logs" data-label="Logs">
+        <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7.5V12l3 2"/></svg>
       </a>
     </nav>
     <button class="side-avatar" id="btn-perfil" type="button" title="Meu perfil"><span id="user-avatar"></span></button>
   </aside>
 
   <main class="main">
+
+    <!-- ─────────── DASHBOARD ─────────── -->
+    <section class="page" id="page-dashboard">
+      <header class="page-head">
+        <div><h1>Dashboard</h1><p>Visão geral do DRE da empresa no exercício e agenda de contas a pagar e a receber.</p></div>
+        <div class="head-actions">
+          <div class="select"><select id="dash-ano" aria-label="Exercício"></select></div>
+          <button class="btn btn-ghost" type="button" id="btn-dash-excel" title="Baixar o exercício em Excel"><svg viewBox="0 0 24 24" class="ico-btn"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>Excel</button>
+        </div>
+      </header>
+
+      <div class="kpis">
+        <div class="kpi"><span><i class="kd pos"></i>Receita bruta</span><strong id="dash-rec">R$ 0,00</strong><small id="dash-rec-sub"></small></div>
+        <div class="kpi"><span><i class="kd neg"></i>Despesas</span><strong id="dash-desp">R$ 0,00</strong><small id="dash-desp-sub"></small></div>
+        <div class="kpi saldo"><span>Lucro / prejuízo líquido</span><strong id="dash-lucro">R$ 0,00</strong><small id="dash-lucro-sub"></small></div>
+        <div class="kpi"><span><i class="kd warn"></i>Margem líquida</span><strong id="dash-margem">0%</strong><small>lucro ÷ receita líquida</small></div>
+      </div>
+      <div class="kpis mini">
+        <div class="kpi"><span>A receber (em aberto)</span><strong class="pos" id="dash-areceber">R$ 0,00</strong></div>
+        <div class="kpi"><span>A pagar (em aberto)</span><strong class="neg" id="dash-apagar">R$ 0,00</strong></div>
+        <div class="kpi"><span>Vencidos</span><strong id="dash-vencidos">0</strong><small id="dash-vencidos-sub"></small></div>
+        <div class="kpi"><span>Saldo em caixas / bancos</span><strong id="dash-saldo-cx">R$ 0,00</strong></div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="card">
+          <header class="card-head"><h2>DRE do exercício</h2><span class="muted" id="dash-dre-ano"></span></header>
+          <dl class="dre-lines" id="dash-dre"></dl>
+        </div>
+        <div class="card">
+          <header class="card-head"><h2>Receitas x despesas por mês</h2>
+            <div class="legend"><span><i style="background:var(--c-rec)"></i>Receita líquida</span><span><i style="background:var(--c-desp)"></i>Despesas</span></div>
+          </header>
+          <div class="chart" id="dash-chart"></div>
+        </div>
+      </div>
+
+      <div class="card agenda-card">
+        <header class="card-head">
+          <div><h2>Agenda de vencimentos</h2><p class="muted">Contas a pagar e a receber pela data de vencimento. Clique num dia para ver os títulos.</p></div>
+          <div class="cal-nav"><button type="button" class="x" id="cal-prev" aria-label="Mês anterior"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button><strong id="cal-titulo"></strong><button type="button" class="x" id="cal-next" aria-label="Próximo mês"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button><button type="button" class="btn btn-ghost sm" id="cal-hoje">Hoje</button></div>
+        </header>
+        <div class="agenda">
+          <div>
+            <div class="cal" id="cal"></div>
+            <div class="cal-legend"><span><i class="pos-bg"></i>A receber</span><span><i class="neg-bg"></i>A pagar</span><span><i class="late-ring"></i>Tem vencido</span><span><i class="done-bg"></i>Quitado</span></div>
+          </div>
+          <div class="agenda-list">
+            <div class="agenda-head"><strong id="agenda-dia-titulo">Mês inteiro</strong><span class="muted" id="agenda-dia-tot"></span></div>
+            <div id="agenda-itens"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <header class="card-head"><h2>Despesas por categoria</h2><span class="muted" id="dash-cat-ano"></span></header>
+        <div class="cat-bars" id="dash-cats"></div>
+      </div>
+    </section>
 
     <!-- ─────────── LANÇAMENTOS ─────────── -->
     <section class="page" id="page-lancamentos">
@@ -98,6 +178,59 @@
       </div>
     </section>
 
+    <!-- ─────────── FLUXO DE CAIXA ─────────── -->
+    <section class="page" id="page-fluxo">
+      <header class="page-head">
+        <div><h1>Fluxo de Caixa</h1><p>Movimentação dia a dia: o que já entrou e saiu (realizado) e o que ainda vai vencer (previsto).</p></div>
+      </header>
+      <form class="toolbar" id="fx-toolbar">
+        <div class="month-step"><button type="button" class="x" id="fx-prev" aria-label="Mês anterior"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
+          <div class="select"><select id="fx-mes" aria-label="Mês"></select></div>
+          <div class="select"><select id="fx-ano" aria-label="Ano"></select></div>
+          <button type="button" class="x" id="fx-next" aria-label="Próximo mês"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div>
+        <div class="select"><select id="fx-caixa" aria-label="Caixa"></select></div>
+        <div class="pills" id="fx-dias"><button type="button" data-v="mov" class="on">Dias com movimento</button><button type="button" data-v="">Todos os dias</button></div>
+      </form>
+      <div class="kpis five">
+        <div class="kpi"><span>Saldo de abertura</span><strong id="fx-abertura">R$ 0,00</strong></div>
+        <div class="kpi"><span><i class="kd pos"></i>Entradas (realizado)</span><strong id="fx-rec">R$ 0,00</strong></div>
+        <div class="kpi"><span><i class="kd neg"></i>Saídas (realizado)</span><strong id="fx-desp">R$ 0,00</strong></div>
+        <div class="kpi saldo"><span>Saldo final (realizado)</span><strong id="fx-saldo">R$ 0,00</strong></div>
+        <div class="kpi"><span><i class="kd warn"></i>Saldo projetado</span><strong id="fx-proj">R$ 0,00</strong><small id="fx-proj-sub"></small></div>
+      </div>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table class="tbl" id="fx-table">
+            <thead><tr><th>Data</th><th class="r">Entradas</th><th class="r">Saídas</th><th class="r">Transferências</th><th class="r">Resultado do dia</th><th class="r">Saldo realizado</th><th class="r">Previsto (líq.)</th><th class="r">Saldo projetado</th></tr></thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── CLIENTES ─────────── -->
+    <section class="page" id="page-clientes">
+      <header class="page-head">
+        <div><h1>Clientes</h1><p>Quem compra da empresa: documento, endereço e contatos para usar nos lançamentos.</p></div>
+        <button class="btn btn-gold" type="button" id="btn-novo-cliente"><svg viewBox="0 0 24 24" class="ico-btn"><path d="M12 5v14M5 12h14"/></svg>Novo cliente</button>
+      </header>
+      <form class="toolbar" id="cli-toolbar">
+        <label class="search"><svg class="ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="cli-f-busca" placeholder="Buscar por nome, razão social, CPF/CNPJ ou cidade"/></label>
+        <span class="count" id="cli-count"></span>
+      </form>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table class="tbl" id="cli-table">
+            <thead><tr><th>Nome</th><th>CPF / CNPJ</th><th>Cidade / UF</th><th>Telefone</th><th>E-mail</th><th class="r">Recebido</th><th class="act"></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <nav class="pager" id="cli-pager"></nav>
+      </div>
+    </section>
+
+    <!-- ─────────── PARCEIROS ─────────── -->
     <section class="page" id="page-parceiros">
       <header class="page-head">
         <div><h1>Parceiros</h1><p>Sua rede de parceiros estratégicos: contatos, CNPJ e contratos em um só lugar.</p></div>
@@ -163,6 +296,50 @@
       </div>
     </section>
 
+    <!-- ─────────── CAIXAS / BANCO (admin) ─────────── -->
+    <section class="page" id="page-caixas">
+      <header class="page-head">
+        <div><h1>Caixas / Banco</h1><p>Contas bancárias, agências e caixas físicos com o saldo de hoje.</p></div>
+        <button class="btn btn-gold" type="button" id="btn-novo-caixa"><svg viewBox="0 0 24 24" class="ico-btn"><path d="M12 5v14M5 12h14"/></svg>Nova conta / caixa</button>
+      </header>
+      <div class="kpis">
+        <div class="kpi saldo"><span>Saldo total hoje</span><strong id="cx-total">R$ 0,00</strong></div>
+        <div class="kpi"><span>Em bancos</span><strong id="cx-bancos">R$ 0,00</strong></div>
+        <div class="kpi"><span>Em caixa físico</span><strong id="cx-fisico">R$ 0,00</strong></div>
+        <div class="kpi"><span><i class="kd warn"></i>Saldo previsto</span><strong id="cx-previsto">R$ 0,00</strong><small>hoje + a receber − a pagar</small></div>
+      </div>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table class="tbl" id="cx-table">
+            <thead><tr><th>Conta / caixa</th><th>Banco</th><th>Agência</th><th>Conta</th><th class="r">Saldo inicial</th><th class="r">Saldo atual</th><th class="r">A receber</th><th class="r">A pagar</th><th class="act"></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="foot-note warn" id="cx-aviso"></p>
+      <p class="foot-note">Saldo atual = saldo inicial + receitas quitadas − despesas quitadas ± transferências, até hoje (mesmo critério do Fluxo de Caixa).</p>
+    </section>
+
+    <!-- ─────────── FORMAS DE PAGAMENTO (admin) ─────────── -->
+    <section class="page" id="page-formas">
+      <header class="page-head">
+        <div><h1>Formas de pagamento</h1><p>Cartões, PIX, boleto e dinheiro, com prazo de recebimento, taxas e tarifas usadas no cálculo do valor líquido.</p></div>
+        <button class="btn btn-gold" type="button" id="btn-nova-forma"><svg viewBox="0 0 24 24" class="ico-btn"><path d="M12 5v14M5 12h14"/></svg>Nova forma</button>
+      </header>
+      <form class="toolbar" id="fp-toolbar">
+        <div class="pills" id="fp-f-tipo"><button type="button" data-v="" class="on">Todas</button><button type="button" data-v="credito">Crédito</button><button type="button" data-v="debito">Débito</button><button type="button" data-v="pix">PIX</button><button type="button" data-v="boleto">Boleto</button><button type="button" data-v="dinheiro">Dinheiro</button></div>
+        <span class="count" id="fp-count"></span>
+      </form>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table class="tbl" id="fp-table">
+            <thead><tr><th>Nome</th><th>Tipo</th><th>Banco / Agência</th><th class="r">Parcelas</th><th class="r">Recebe em</th><th class="r">Taxa intermed.</th><th class="r">Taxa parcel.</th><th class="r">Tarifa fixa</th><th class="act"></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- ─────────── USUÁRIOS (admin) ─────────── -->
     <section class="page" id="page-usuarios">
       <header class="page-head">
@@ -176,11 +353,36 @@
       <div class="table-card">
         <div class="table-scroll">
           <table class="tbl" id="usr-table">
-            <thead><tr><th>Usuário</th><th>Função</th><th>Telas liberadas</th><th>Criado em</th><th class="act"></th></tr></thead>
+            <thead><tr><th>Usuário</th><th>Nível de acesso</th><th>Telas</th><th>Criado em</th><th class="act"></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
         <nav class="pager" id="usr-pager"></nav>
+      </div>
+    </section>
+
+    <!-- ─────────── LOGS ─────────── -->
+    <section class="page" id="page-logs">
+      <header class="page-head">
+        <div><h1>Logs</h1><p>Histórico de tudo que foi criado, alterado ou apagado no sistema, com quem fez e quando.</p></div>
+      </header>
+      <form class="toolbar" id="log-toolbar">
+        <div class="select"><select id="log-f-acao" aria-label="Ação"></select></div>
+        <div class="select"><select id="log-f-area" aria-label="Área"></select></div>
+        <label class="search sm"><svg class="ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="log-f-user" placeholder="Usuário"/></label>
+        <label class="date-f"><span>De</span><input type="date" id="log-f-de"/></label>
+        <label class="date-f"><span>Até</span><input type="date" id="log-f-ate"/></label>
+        <button type="button" class="link" id="log-limpar">Limpar filtros</button>
+        <span class="count" id="log-count"></span>
+      </form>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table class="tbl" id="log-table">
+            <thead><tr><th>Data / hora</th><th>Usuário</th><th>Ação</th><th>Área</th><th>Detalhes</th><th>IP</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <nav class="pager" id="log-pager"></nav>
       </div>
     </section>
 
@@ -310,20 +512,91 @@
         <label class="field"><span>Usuário *</span><input type="text" id="usr-username" placeholder="sem espaços" autocomplete="off"/></label>
         <label class="field"><span>Nome</span><input type="text" id="usr-nome" maxlength="150"/></label>
         <label class="field"><span id="usr-senha-label">Senha *</span><input type="password" id="usr-senha" autocomplete="new-password" placeholder="mínimo 6 caracteres"/></label>
-        <div class="field"><span>Função</span>
+        <div class="field"><span>Nível de acesso</span>
           <div class="seg sm" id="usr-role-seg"><button type="button" data-v="user" class="on">Usuário</button><button type="button" data-v="admin">Administrador</button></div>
         </div>
       </div>
-      <div class="field" id="usr-perms-wrap">
-        <span>Telas que essa pessoa pode ver <button type="button" class="link" id="usr-perms-todas">marcar todas</button></span>
-        <div class="perms" id="usr-perms"></div>
-      </div>
-      <p class="hint" id="usr-admin-hint" hidden>Administradores veem todas as telas e gerenciam usuários.</p>
+      <div class="nivel" id="usr-nivel"></div>
       <div class="form-error" id="usr-error"></div>
     </form>
     <footer class="modal-foot"><button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-navy" id="btn-salvar-usr">Salvar</button></footer>
   </div>
 </div>
+
+<!-- Cliente -->
+<div class="modal sheet hidden" id="modal-cli">
+  <div class="modal-box lg">
+    <header class="modal-head"><h2 id="cli-modal-title">Novo Cliente</h2><button class="x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+    <form class="modal-body" id="cli-form">
+      <div class="grid">
+        <label class="field"><span>Nome *</span><input type="text" id="cli-nome" maxlength="255" placeholder="Como o cliente é conhecido"/></label>
+        <label class="field"><span>Razão social</span><input type="text" id="cli-razao" maxlength="255"/></label>
+        <div class="field"><span>CPF ou CNPJ</span>
+          <div class="input-btn"><input type="text" id="cli-doc" inputmode="numeric" maxlength="18" placeholder="CPF ou CNPJ"/><button type="button" class="btn btn-ghost sm" id="btn-cli-cnpj" title="Preenche os dados pela Receita (BrasilAPI)">Buscar</button></div>
+          <small class="hint" id="cli-doc-hint"></small>
+        </div>
+        <label class="field"><span>E-mail</span><input type="email" id="cli-email" maxlength="150"/></label>
+        <label class="field"><span>Telefone</span><input type="text" id="cli-tel" inputmode="numeric" maxlength="15" placeholder="(00) 00000-0000"/></label>
+        <div class="grid inner">
+          <label class="field"><span>Estado</span><select id="cli-uf"></select></label>
+          <label class="field"><span>Cidade</span><input type="text" id="cli-cidade" maxlength="100"/></label>
+        </div>
+        <label class="field span2"><span>Endereço</span><input type="text" id="cli-endereco" maxlength="255" placeholder="Rua, número, bairro, CEP"/></label>
+        <label class="field span2"><span>Observações</span><textarea id="cli-obs" rows="3"></textarea></label>
+      </div>
+      <div class="form-error" id="cli-error"></div>
+    </form>
+    <footer class="modal-foot"><button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-navy" id="btn-salvar-cli">Salvar</button></footer>
+  </div>
+</div>
+
+<!-- Caixa / Banco -->
+<div class="modal sheet hidden" id="modal-cx">
+  <div class="modal-box">
+    <header class="modal-head"><h2 id="cx-modal-title">Nova conta / caixa</h2><button class="x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+    <form class="modal-body" id="cx-form">
+      <div class="field"><span>Tipo</span>
+        <div class="seg" id="cx-tipo-seg"><button type="button" data-v="banco" class="on">Conta bancária</button><button type="button" data-v="caixa">Caixa físico</button><button type="button" data-v="investimento">Investimento</button></div>
+      </div>
+      <label class="field"><span>Nome *</span><input type="text" id="cx-nome" maxlength="100" placeholder="Ex: Itaú PJ, Caixa da recepção"/></label>
+      <div class="grid" id="cx-banco-wrap">
+        <label class="field span2"><span>Banco</span><input type="text" id="cx-banco" maxlength="100" list="lista-bancos" placeholder="Ex: Itaú, Nubank, Bradesco"/></label>
+        <label class="field"><span>Agência</span><input type="text" id="cx-agencia" maxlength="30" placeholder="0000"/></label>
+        <label class="field"><span>Conta</span><input type="text" id="cx-conta" maxlength="30" placeholder="00000-0"/></label>
+      </div>
+      <label class="field"><span>Saldo inicial (R$)</span><input type="number" id="cx-saldo" step="0.01" placeholder="0,00"/><small class="hint">Quanto havia na conta antes do primeiro lançamento no sistema.</small></label>
+      <label class="field"><span>Observações</span><input type="text" id="cx-obs" maxlength="255"/></label>
+      <div class="form-error" id="cx-error"></div>
+    </form>
+    <footer class="modal-foot"><button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-navy" id="btn-salvar-cx">Salvar</button></footer>
+  </div>
+</div>
+
+<!-- Forma de pagamento -->
+<div class="modal sheet hidden" id="modal-fp">
+  <div class="modal-box lg">
+    <header class="modal-head"><h2 id="fp-modal-title">Nova forma de pagamento</h2><button class="x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+    <form class="modal-body" id="fp-form">
+      <div class="field"><span>Tipo *</span>
+        <div class="seg wrap" id="fp-tipo-seg"><button type="button" data-v="credito" class="on">Cartão de crédito</button><button type="button" data-v="debito">Cartão de débito</button><button type="button" data-v="pix">PIX</button><button type="button" data-v="boleto">Boleto</button><button type="button" data-v="dinheiro">Dinheiro</button></div>
+      </div>
+      <div class="grid">
+        <label class="field span2"><span>Nome *</span><input type="text" id="fp-nome" maxlength="100" placeholder="Ex: Visa Crédito 3x, PIX Itaú"/></label>
+        <label class="field fp-banco"><span>Banco</span><input type="text" id="fp-banco" maxlength="100" list="lista-bancos" placeholder="Ex: Itaú"/></label>
+        <label class="field fp-banco"><span>Agência</span><input type="text" id="fp-agencia" maxlength="30" placeholder="0000"/></label>
+        <label class="field fp-credito"><span>Parcelas</span><input type="number" id="fp-parcelas" min="1" max="48" step="1" value="1"/></label>
+        <label class="field"><span>Dias para recebimento</span><input type="number" id="fp-dias" min="0" max="365" step="1" value="0"/></label>
+        <label class="field"><span>Taxa de intermediação (%)</span><input type="number" id="fp-taxa" min="0" max="100" step="0.01" placeholder="0,00"/></label>
+        <label class="field fp-credito"><span>Taxa de parcelamento (%)</span><input type="number" id="fp-taxa-parc" min="0" max="100" step="0.01" placeholder="0,00"/></label>
+        <label class="field"><span>Tarifa fixa por transação (R$)</span><input type="number" id="fp-tarifa" min="0" step="0.01" placeholder="0,00"/></label>
+      </div>
+      <div class="taxa" id="fp-simula"></div>
+      <div class="form-error" id="fp-error"></div>
+    </form>
+    <footer class="modal-foot"><button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-navy" id="btn-salvar-fp">Salvar</button></footer>
+  </div>
+</div>
+<datalist id="lista-bancos"></datalist>
 
 <!-- Perfil -->
 <div class="modal hidden" id="modal-perfil">

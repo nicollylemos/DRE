@@ -31,9 +31,8 @@ function env(string $k, $default = null) {
     return ($v === false || $v === '') ? $default : $v;
 }
 
-// Por enquanto toda conta criada é administradora. Pra voltar a ter usuário comum
-// (com telas liberadas uma a uma), coloque TODOS_ADMIN=0 no .env.
-define('TODOS_ADMIN', env('TODOS_ADMIN', '1') !== '0');
+// Versão do sistema — aparece na tela de login. Atualize a cada entrega.
+define('APP_VERSION', '2.0.0');
 define('IS_PROD', env('APP_ENV', 'production') === 'production');
 date_default_timezone_set(env('APP_TZ', 'America/Sao_Paulo'));
 
@@ -170,27 +169,25 @@ function admin_only(): void {
     if ($u['role'] !== 'admin') fail(403, 'Acesso restrito');
 }
 
-// ─── Permissões de tela ──────────────────────────────────────────────────────
-// Telas que podem ser liberadas pra um usuário comum. Perfil fica sempre
-// acessível; Usuários e Logs são só de admin.
-const PAGINAS_PERMISSAO = [
-    'dashboard', 'lancamentos',
-    'dre-resumo', 'dre-detalhado', 'fluxo-caixa', 'formas-pagamento-rel',
-    'cad-clientes', 'cad-fornecedores', 'cad-parceiros', 'cad-categorias', 'cad-caixas', 'cad-formas',
-    'import',
+// ─── Níveis de acesso ────────────────────────────────────────────────────────
+// Dois níveis fixos:
+//   admin   → todas as telas (inclui Categorias, Caixas/Banco, Formas de pagamento e Usuários)
+//   usuário → só as telas abaixo. Qualquer outra rota responde 403, mesmo chamada direto na API.
+const PERMISSOES_USUARIO = [
+    'dashboard', 'lancamentos', 'fluxo-caixa',
+    'cad-clientes', 'cad-fornecedores', 'cad-parceiros', 'logs',
 ];
-function sanitizar_permissoes($input): array {
-    if (is_string($input)) $input = json_decode($input, true);
-    if (!is_array($input)) return [];
-    return array_values(array_unique(array_filter($input, fn($p) => is_string($p) && in_array($p, PAGINAS_PERMISSAO, true))));
-}
+// Telas que só o admin acessa (usado só pra montar a lista "todas" do admin).
+const PERMISSOES_ADMIN = [
+    'cad-categorias', 'cad-caixas', 'cad-formas', 'usuarios',
+    'dre-resumo', 'dre-detalhado', 'formas-pagamento-rel', 'import',
+];
 function perms_of(array $u): array {
-    $p = json_decode((string) ($u['permissoes'] ?? '[]'), true);
-    return is_array($p) ? $p : [];
+    return $u['role'] === 'admin' ? array_merge(PERMISSOES_USUARIO, PERMISSOES_ADMIN) : PERMISSOES_USUARIO;
 }
 function tem_permissao(array $u, string ...$paginas): bool {
     if ($u['role'] === 'admin') return true;
-    return (bool) array_intersect($paginas, perms_of($u));
+    return (bool) array_intersect($paginas, PERMISSOES_USUARIO);
 }
 /** Segunda camada: a UI já esconde o menu, isso impede acesso direto pela API. */
 function permitir(string ...$paginas): void {
