@@ -1,5 +1,8 @@
 .env
 uploads/*/*
 !uploads/*/.gitkeep
-storage/sessions/
+storage/sessions/*
+!storage/sessions/.gitkeep
+storage/imports/*
+!storage/imports/.gitkeep
 storage/schema_version
