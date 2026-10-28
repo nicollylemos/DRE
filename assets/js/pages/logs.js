@@ -3,11 +3,12 @@
   const ACOES = { create: ['Criação', 'act-create'], update: ['Alteração', 'act-update'], delete: ['Exclusão', 'act-delete'],
     baixa: ['Baixa', 'act-create'], update_status: ['Situação', 'act-update'], update_role: ['Nível de acesso', 'act-warn'],
     reset_senha: ['Senha redefinida', 'act-warn'], import: ['Importação', 'act-create'], undo_import: ['Importação desfeita', 'act-delete'],
-    export: ['Exportação', 'act-auth'],
+    export: ['Exportação', 'act-auth'], vincular: ['Vínculo', 'act-update'], aceite_termos: ['Aceite LGPD', 'act-auth'],
+    senha_esqueci: ['Pediu nova senha', 'act-warn'], senha_redefinida: ['Senha redefinida (e-mail)', 'act-warn'],
     login: ['Login', 'act-auth'], logout: ['Logout', 'act-auth'], login_failed: ['Login falhou', 'act-delete'], setup_admin: ['Config. inicial', 'act-warn'] };
   const AREAS = { transactions: 'Lançamentos', transfers: 'Transferências', clientes: 'Clientes', fornecedores: 'Fornecedores', parceiros: 'Parceiros',
     categorias: 'Categorias', caixas: 'Caixas / Banco', formas_pagamento: 'Formas de pagamento', users: 'Usuários', perfis: 'Níveis de acesso',
-    auth: 'Autenticação', documentos: 'Documentos', importacoes: 'Importações', export: 'Exportações',
+    auth: 'Autenticação', documentos: 'Documentos', notas_fiscais: 'Notas fiscais', importacoes: 'Importações', export: 'Exportações',
     contas_receita: 'Contas de receita', contas_despesa: 'Contas de despesa', centros_custo: 'Centros de custo' };
   const POR = 20;
   // "income - Aluguel - R$1200" (formato gravado pelos lançamentos) → "Receita · Aluguel · R$ 1.200,00"
@@ -38,11 +39,31 @@
         <td class="nowrap">${esc(AREAS[x.entity] || x.entity)}${x.entity_id ? ` <span class="dim">#${x.entity_id}</span>` : ''}</td>
         <td class="det">${x.details ? esc(detalhe(x.details)) : '<span class="dim">—</span>'}</td>
         <td class="nowrap num dim">${esc(x.ip) || '—'}</td>
+        <td class="r">${x.tem_dados ? `<button type="button" class="btn btn-ghost xs" data-dados="${x.id}" title="Ver uma cópia dos dados ${x.action === 'delete' || x.action === 'undo_import' ? 'apagados' : 'registrados'}">${x.action === 'delete' || x.action === 'undo_import' ? 'Ver apagado' : 'Ver dados'}</button>` : ''}</td>
       </tr>`;
-    }).join('') : '<tr><td colspan="6" class="empty"><strong>Nenhum registro</strong>Ajuste os filtros.</td></tr>';
+    }).join('') : '<tr><td colspan="7" class="empty"><strong>Nenhum registro</strong>Ajuste os filtros.</td></tr>';
+    document.querySelectorAll('#log-table [data-dados]').forEach(b => b.onclick = () => verDados(Number(b.dataset.dados)));
     renderPager('log-pager', r.page, r.pages, p => { lg.pagina = p; carregar(); }, r.total, POR);
     $('log-count').textContent = r.total === 1 ? '1 registro' : `${r.total} registros`;
   }
+  // Cópia do que foi apagado (guardada no momento da exclusão).
+  const valorTxt = v => v === null || v === undefined || v === '' ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+  async function verDados(id) {
+    const r = await api('logs/' + id);
+    if (r.error) return toast(r.error, 'err');
+    const [lbl] = ACOES[r.action] || [r.action];
+    const titulo = `${lbl} · ${AREAS[r.entity] || r.entity}${r.entity_id ? ' #' + r.entity_id : ''}`;
+    const sub = `${r.username || '—'} em ${fmtDataHora(r.created_at)}`;
+    const d = r.dados;
+    if (Array.isArray(d)) {
+      const cols = d.length ? Object.keys(d[0]).filter(k => !['user_id', 'importacao_id'].includes(k)).slice(0, 10) : [];
+      const tabela = `<div class="table-scroll" style="max-height:52vh"><table class="tbl compact"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${d.slice(0, 300).map(row => `<tr>${cols.map(c => `<td class="nowrap">${esc(valorTxt(row[c]))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+        + (d.length > 300 ? `<p class="muted" style="margin-top:8px">Mostrando 300 de ${d.length} registros.</p>` : '');
+      return mostrarDetalhes(titulo, sub + ` · ${d.length} registro(s)`, [['Registros', tabela, true]]);
+    }
+    mostrarDetalhes(titulo, sub, Object.entries(d || {}).map(([k, v]) => [k, valorTxt(v)]));
+  }
+
   ['log-f-acao', 'log-f-area', 'log-f-de', 'log-f-ate'].forEach(id => $(id).addEventListener('change', () => { lg.pagina = 1; carregar(); }));
   let t = null;
   $('log-f-user').addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { lg.pagina = 1; carregar(); }, 300); });

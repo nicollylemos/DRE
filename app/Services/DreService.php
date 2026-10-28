@@ -79,7 +79,9 @@ final class DreService
     public static function resumo(int $ano): array
     {
         $txs = Database::all('SELECT tipo, data, valor, taxa_mdr FROM transactions WHERE YEAR(data)=?', [$ano]);
-        $si = (float) Database::value('SELECT COALESCE(SUM(saldo_inicial),0) FROM caixas');
+        // Saldo inicial do ano = saldo inicial das contas + resultado de todos os anos anteriores
+        $si = (float) Database::value('SELECT COALESCE(SUM(saldo_inicial),0) FROM caixas')
+            + (float) Database::value("SELECT COALESCE(SUM(CASE WHEN tipo='income' THEN valor-taxa_mdr ELSE -valor END),0) FROM transactions WHERE YEAR(data)<?", [$ano]);
         $mes = array_fill(1, 12, ['bruta' => 0.0, 'ded' => 0.0, 'desp' => 0.0]);
         foreach ($txs as $t) {
             $m = mes_de($t['data']);
@@ -258,7 +260,14 @@ final class DreService
             $abertura += (float) Database::value('SELECT COALESCE(SUM(valor),0) FROM transfers WHERE data < ? AND destino_nome=?', [$ini, $caixa]);
             $abertura -= (float) Database::value('SELECT COALESCE(SUM(valor),0) FROM transfers WHERE data < ? AND origem_nome=?', [$ini, $caixa]);
         }
-        $saldo = $abertura; $saldoProj = $abertura; $out = [];
+        // Projeção: além do que já aconteceu, conta o que ficou EM ABERTO com vencimento antes deste mês
+        // (atrasados e, olhando um mês futuro, o que ainda vai vencer até lá) — senão a projeção fica otimista.
+        $sqlPend = "SELECT COALESCE(SUM(CASE WHEN tipo='income' THEN valor ELSE -valor END),0) FROM transactions
+                    WHERE status='em_aberto' AND COALESCE(data_vencimento, data) < ?";
+        $pP = [$ini];
+        if ($filtra) { $sqlPend .= ' AND caixa_nome=?'; $pP[] = $caixa; }
+        $pendente = (float) Database::value($sqlPend, $pP);
+        $saldo = $abertura; $saldoProj = $abertura + $pendente; $out = [];
         for ($d = 1; $d <= $n; $d++) {
             $a = $acc[$d];
             $resultado = $a['rec'] - $a['desp'] + $a['trIn'] - $a['trOut'];
@@ -271,7 +280,7 @@ final class DreService
                 'receita_prevista' => $a['recP'], 'despesa_prevista' => $a['despP'], 'previsto' => $previsto, 'saldo_projetado' => $saldoProj,
             ];
         }
-        return ['saldo_abertura' => round($abertura, 2), 'dias' => $out];
+        return ['saldo_abertura' => round($abertura, 2), 'pendente_anterior' => round($pendente, 2), 'dias' => $out];
     }
 
     // ─── Relatório por forma de pagamento ───────────────────────────────────

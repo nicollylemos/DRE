@@ -122,6 +122,8 @@ final class Auth
             'role' => $admin ? 'admin' : 'user', 'is_admin' => $admin,
             'permissoes' => $admin ? Permissions::todas() : Permissions::normalizar($u['perfil_permissoes'] ?? '[]'),
             'deve_trocar_senha' => (int) ($u['deve_trocar_senha'] ?? 0) === 1,
+            'deve_aceitar_termos' => Termos::pendente($u),
+            'termos_aceitos_em' => $u['termos_aceitos_em'] ?? null, 'termos_versao' => $u['termos_versao'] ?? null,
             'home' => self::home(),
         ];
     }

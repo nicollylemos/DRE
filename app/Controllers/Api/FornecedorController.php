@@ -69,7 +69,7 @@ class FornecedorController extends Controller
         Upload::apagar($row['contrato_path']);
         foreach (Documento::doFornecedor($id) as $d) Upload::apagar($d['arquivo_path']);
         Database::run('DELETE FROM documentos WHERE fornecedor_id=?', [$id]);
-        $this->log('delete', 'fornecedores', $id, $row['nome']);
+        $this->log('delete', 'fornecedores', $id, $row['nome'], null, $row);
         return ['ok' => true];
     }
 }

@@ -2,9 +2,11 @@
    Uso: LancForm.abrir(lancamento | null, { padrao }, aoSalvar) */
 const LancForm = (function () {
   const CENTROS_RECEITA = ['RECEITA VENDAS', 'RECEITA OPERACIONAL', 'RECEITA COMUM'];
-  let editId = null, aoSalvar = null;
+  let editId = null, aoSalvar = null, notaId = null, pre = {};
 
+  /** x = lançamento sendo editado; sem x usa os valores pré-preenchidos (pre) ou o que já está na tela. */
   function preencherSelects(x) {
+    const atual = (campo, id) => x ? x[campo] : (pre[campo] !== undefined && pre[campo] !== null ? pre[campo] : $(id).value);
     const tipo = segValor('tx-tipo-seg');
     const c = state.cad;
     // categorias do tipo (ativas) + a atual, mesmo se desativada
@@ -15,8 +17,8 @@ const LancForm = (function () {
 
     const pessoas = tipo === 'expense' ? (c.fornecedores || []) : [...new Set([...(c.clientes || []), ...(c.fornecedores || [])])].sort();
     $('tx-pessoa-label').textContent = tipo === 'expense' ? 'Fornecedor' : 'Cliente';
-    $('tx-pessoa').innerHTML = opts(pessoas, x ? x.cliente_fornecedor : $('tx-pessoa').value);
-    $('tx-forma').innerHTML = opts(c.formasPagamento || [], x ? x.forma_pagamento_nome : $('tx-forma').value);
+    $('tx-pessoa').innerHTML = opts(pessoas, atual('cliente_fornecedor', 'tx-pessoa'));
+    $('tx-forma').innerHTML = opts(c.formasPagamento || [], x ? x.forma_pagamento_nome : atual('forma_pagamento', 'tx-forma'));
     $('tx-caixa').innerHTML = opts(c.caixasBancos || [], x ? x.caixa_nome : $('tx-caixa').value);
     const centros = (c.centrosCusto || []).filter(n => tipo === 'income' ? CENTROS_RECEITA.includes(n) : !CENTROS_RECEITA.includes(n));
     $('tx-centro').innerHTML = opts(centros, x ? x.centro_custo_nome : $('tx-centro').value);
@@ -41,27 +43,30 @@ const LancForm = (function () {
     $('tx-pag').disabled = aberto;
   }
 
-  $('tx-tipo-seg').addEventListener('change', () => preencherSelects(null));
+  $('tx-tipo-seg').addEventListener('change', () => { pre = {}; preencherSelects(null); });
   $('tx-forma').addEventListener('change', calcTaxa);
   $('tx-valor').addEventListener('input', calcTaxa);
   $('tx-status').addEventListener('change', situacaoMudou);
   $('tx-form').addEventListener('submit', e => { e.preventDefault(); $('btn-salvar-tx').click(); });
 
-  /** p = valores iniciais pra um lançamento novo: { tipo, data, status, data_vencimento, categoria_id } */
+  /** p = valores iniciais pra um lançamento novo: { tipo, data, status, data_vencimento, categoria_id, titulo,
+   *  valor, descricao, cliente_fornecedor, forma_pagamento, observacoes, nota_fiscal_id } */
   async function abrir(x = null, p = {}, cb = null) {
     if (!state.cad.categorias) await carregarCadastros();
     editId = x ? x.id : null; aoSalvar = cb;
+    notaId = !x && p.nota_fiscal_id ? p.nota_fiscal_id : null;
+    pre = x ? {} : p;
     $('tx-modal-title').textContent = x ? 'Editar lançamento' : (p.titulo || 'Novo lançamento');
     $('tx-error').textContent = '';
     ['tx-categoria', 'tx-pessoa', 'tx-forma', 'tx-caixa', 'tx-centro', 'tx-conta'].forEach(id => $(id).innerHTML = '');
     segSet('tx-tipo-seg', x ? x.tipo : (p.tipo || 'expense'));
     $('tx-data').value = x ? x.data : (p.data || hojeISO());
-    $('tx-valor').value = x ? x.valor : '';
-    $('tx-descricao').value = x ? (x.descricao || '') : '';
+    $('tx-valor').value = x ? x.valor : (p.valor || '');
+    $('tx-descricao').value = x ? (x.descricao || '') : (p.descricao || '');
     $('tx-status').value = x ? x.status : (p.status || 'quitado');
     $('tx-venc').value = x ? (x.data_vencimento || '') : (p.data_vencimento || '');
     $('tx-pag').value = x ? (x.data_pagamento || '') : '';
-    $('tx-obs').value = x ? (x.observacoes || '') : '';
+    $('tx-obs').value = x ? (x.observacoes || '') : (p.observacoes || '');
     preencherSelects(x);
     if (!x && p.categoria_id) $('tx-categoria').value = String(p.categoria_id);
     situacaoMudou();
@@ -79,6 +84,7 @@ const LancForm = (function () {
       status: $('tx-status').value, data_vencimento: $('tx-venc').value || null, data_pagamento: $('tx-pag').value || null,
       observacoes: $('tx-obs').value.trim(),
     };
+    if (notaId) body.nota_fiscal_id = notaId;
     if (!body.date || !(body.amount > 0)) { $('tx-error').textContent = 'Informe a data e um valor maior que zero.'; return; }
     const btn = $('btn-salvar-tx'); carregando(btn, true);
     const r = editId ? await api('transactions/' + editId, 'PUT', body) : await api('transactions', 'POST', body);
@@ -110,6 +116,7 @@ const LancForm = (function () {
       ['Grupo / Conta', [x.grupo, x.conta_nome].filter(Boolean).join(' — ')],
       ['Situação', x.status === 'quitado' ? 'Quitado' : 'Em aberto'], ['Vencimento', fmtData(x.data_vencimento)], ['Pagamento', fmtData(x.data_pagamento)],
       ['Observações', x.observacoes], x.importacao_id ? ['Origem', `Importação #${x.importacao_id}`] : null,
+      x.nf_id && pode('notas-fiscais') ? ['Nota fiscal', `<a class="link" href="${esc(url('notas-fiscais?ver=' + x.nf_id))}">Abrir nota${x.nf_qtd > 1 ? ` (${x.nf_qtd} notas)` : ''}</a>`, true] : null,
     ];
     const botoes = [];
     if (podeEditar('lancamentos')) {

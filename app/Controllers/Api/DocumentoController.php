@@ -53,7 +53,7 @@ class DocumentoController extends Controller
         $this->permitir($row['tipo'], true);
         Documento::delete($id);
         Upload::apagar($row['arquivo_path']);
-        $this->log('delete', 'documentos', $id, $row['arquivo_nome']);
+        $this->log('delete', 'documentos', $id, $row['arquivo_nome'], null, $row);
         return ['ok' => true];
     }
 

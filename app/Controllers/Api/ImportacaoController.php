@@ -56,9 +56,11 @@ class ImportacaoController extends Controller
     {
         $tipo = $this->tipo();
         $this->autorizarTipo($tipo);
+        $t0 = microtime(true);
         $r = ImportService::confirmar((string) $this->input('token', ''), (array) $this->input('mapeamento', []), (array) $this->input('opcoes', []));
-        $this->log('import', 'importacoes', $r['id'], ImportService::TIPOS[$tipo] . ": {$r['importados']} importado(s), {$r['ignorados']} ignorado(s) — {$r['arquivo']}");
-        return $r;
+        $ms = (int) round((microtime(true) - $t0) * 1000);
+        $this->log('import', 'importacoes', $r['id'], ImportService::TIPOS[$tipo] . ": {$r['importados']} importado(s), {$r['ignorados']} ignorado(s) — {$r['arquivo']} — gravado em {$ms} ms");
+        return $r + ['tempo_ms' => $ms];
     }
 
     /** Desfaz: apaga o que a importação criou. */
@@ -67,8 +69,9 @@ class ImportacaoController extends Controller
         $imp = Importacao::findOrFail((int) $id, 'Importação não encontrada');
         $this->autorizarTipo($imp['tipo']);
         if ($imp['desfeita_em']) throw new HttpException(400, 'Essa importação já foi desfeita');
+        $copia = Importacao::registros($imp);
         $n = Importacao::desfazer($imp);
-        $this->log('undo_import', 'importacoes', (int) $id, "{$imp['arquivo_nome']} — $n registro(s) removido(s)");
+        $this->log('undo_import', 'importacoes', (int) $id, "{$imp['arquivo_nome']} — $n registro(s) removido(s)", null, $copia ?: null);
         return ['ok' => true, 'removidos' => $n];
     }
 

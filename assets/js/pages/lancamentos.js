@@ -42,11 +42,13 @@
         { label: 'Visualizar', fn: () => LancForm.ver(x, carregar) },
         ed && { label: 'Editar', fn: () => LancForm.abrir(x, {}, carregar) },
         ed && (x.status === 'em_aberto' ? { label: 'Dar baixa', fn: () => LancForm.baixar(x, true, carregar) } : { label: 'Reabrir', fn: () => LancForm.baixar(x, false, carregar) }),
+        x.nf_id && pode('notas-fiscais') ? { label: 'Nota fiscal', fn: () => { location.href = url('notas-fiscais?ver=' + x.nf_id); } }
+          : (!x.nf_id && podeEditar('notas-fiscais') ? { label: 'Anexar nota fiscal', fn: () => { location.href = url(`notas-fiscais?novo=1&lancamento=${x.id}&tipo=${x.tipo === 'income' ? 'saida' : 'entrada'}&valor=${x.valor}`); } } : null),
         ed && { label: 'Apagar', danger: true, fn: () => LancForm.apagar(x, carregar) },
       ]);
       return `<tr>
         <td class="nowrap num">${fmtData(x.data)}</td>
-        <td class="wrap"><span class="ttl">${esc(x.descricao) || '<span class="dim">Sem descrição</span>'}</span></td>
+        <td class="wrap"><span class="ttl">${esc(x.descricao) || '<span class="dim">Sem descrição</span>'}</span>${x.nf_id ? ` <a class="fbadge nf" href="${esc(url('notas-fiscais?ver=' + x.nf_id))}" title="${x.nf_qtd > 1 ? x.nf_qtd + ' notas fiscais vinculadas' : 'Nota fiscal vinculada'}">NF</a>` : ''}</td>
         <td class="nowrap">${x.categoria_nome ? `<span class="catg"><i style="background:${esc(cor(x.categoria_id))}"></i>${esc(x.categoria_nome)}</span>` : '<span class="dim">—</span>'}</td>
         <td class="wrap">${esc(x.cliente_fornecedor) || '<span class="dim">—</span>'}</td>
         <td class="money r ${x.tipo === 'income' ? 'pos' : 'neg'}">${x.tipo === 'income' ? '+ ' : '− '}${fmtBRL(x.valor)}</td>

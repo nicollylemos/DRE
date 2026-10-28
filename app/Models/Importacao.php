@@ -23,12 +23,20 @@ class Importacao extends Model
         }, $rows);
     }
 
+    /** Registros que a importação criou (cópia guardada no log antes de desfazer). */
+    public static function registros(array $imp): array
+    {
+        $tab = self::TABELA_DO_TIPO[$imp['tipo']] ?? null;
+        return $tab ? Database::all("SELECT * FROM `$tab` WHERE importacao_id=? ORDER BY id", [$imp['id']]) : [];
+    }
+
     /** Apaga o que essa importação criou. Devolve quantos registros saíram. */
     public static function desfazer(array $imp): int
     {
         $tab = self::TABELA_DO_TIPO[$imp['tipo']] ?? null;
         if (!$tab) return 0;
         return Database::transaction(function () use ($tab, $imp) {
+            if ($tab === 'transactions') Database::run('UPDATE notas_fiscais SET transaction_id=NULL WHERE transaction_id IN (SELECT id FROM transactions WHERE importacao_id=?)', [$imp['id']]);
             $n = Database::run("DELETE FROM `$tab` WHERE importacao_id=?", [$imp['id']]);
             Database::run('UPDATE importacoes SET desfeita_em=NOW() WHERE id=?', [$imp['id']]);
             return $n;

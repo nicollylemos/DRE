@@ -36,8 +36,9 @@
             <input type="file" id="perfil-foto" accept="image/*" hidden/></div>
         </div>
         <label class="field"><span>Nome</span><input type="text" id="perfil-nome" maxlength="150"/></label>
-        <label class="field"><span>E-mail</span><input type="email" id="perfil-email" maxlength="150"/></label>
+        <label class="field"><span>E-mail <small class="opc">usado no "Esqueci minha senha"</small></span><input type="email" id="perfil-email" maxlength="150"/></label>
         <div class="form-error" id="perfil-error"></div>
+        <p class="muted perfil-lgpd">Seus dados seguem a <a class="link" href="<?= e(url('privacidade')) ?>" target="_blank" rel="noopener">Política de privacidade</a> e o <a class="link" href="<?= e(url('termos')) ?>" target="_blank" rel="noopener">Termo de uso</a><span id="perfil-aceite"></span>.</p>
       </form>
       <form id="senha-form" class="tab-pane stack hidden" data-pane="senha" autocomplete="off">
         <label class="field"><span>Senha atual</span><input type="password" id="senha-atual" autocomplete="current-password"/></label>

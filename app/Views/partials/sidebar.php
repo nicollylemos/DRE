@@ -12,6 +12,7 @@ $icones = [
     'calendario'   => '<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M7.5 13.5h2M11 13.5h2M14.5 13.5h2M7.5 17h2M11 17h2"/>',
     'lancamentos'  => '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h4"/>',
     'fluxo-caixa'  => '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+    'notas-fiscais' => '<path d="M6 2.5h8.5L19 7v14.5H6z"/><path d="M14.5 2.5V7H19"/><path d="M9 12h6.5M9 15.5h6.5M9 9h2.5"/>',
     'importacao'   => '<path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 15v3a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-3"/>',
     'clientes'     => '<circle cx="12" cy="8" r="4"/><path d="M4.5 21c.8-4 3.8-6.2 7.5-6.2s6.7 2.2 7.5 6.2"/>',
     'fornecedores' => '<path d="M3 9.5 4.6 4h14.8L21 9.5"/><path d="M4 9.5v10.5h16V9.5"/><path d="M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M10 20v-5h4v5"/>',

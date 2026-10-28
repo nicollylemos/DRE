@@ -22,7 +22,7 @@ class CadastroController extends Controller
         $cd = Database::all('SELECT id, grupo, conta FROM contas_despesa ORDER BY id');
         return [
             'formasPagamento'     => array_column(FormaPagamento::resumo(), 'nome'),
-            'formasFull'          => array_map(fn($f) => ['nome' => $f['nome'], 'taxa_intermediacao' => (float) $f['taxa_intermediacao'], 'tarifa_fixa' => (float) $f['tarifa_fixa']], FormaPagamento::resumo()),
+            'formasFull'          => array_map(fn($f) => ['nome' => $f['nome'], 'tipo' => $f['tipo'], 'taxa_intermediacao' => (float) $f['taxa_intermediacao'], 'tarifa_fixa' => (float) $f['tarifa_fixa']], FormaPagamento::resumo()),
             'caixasBancos'        => Caixa::nomes(),
             'centrosCusto'        => array_column(Database::all('SELECT nome FROM centros_custo ORDER BY id'), 'nome'),
             'gruposContasReceita' => array_values(array_unique(array_column($cr, 'grupo'))),
@@ -69,7 +69,7 @@ class CadastroController extends Controller
         $row = Cadastro::find($t, (int) $id);
         if (!$row) throw new HttpException(404, 'Registro não encontrado');
         Cadastro::apagar($t, (int) $id);
-        $this->log('delete', $t, (int) $id, $row['nome'] ?? $row['grupo'] ?? null);
+        $this->log('delete', $t, (int) $id, $row['nome'] ?? $row['grupo'] ?? null, null, $row);
         return ['ok' => true];
     }
 }

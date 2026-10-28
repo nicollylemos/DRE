@@ -1,6 +1,6 @@
 /* Fluxo de Caixa: realizado x previsto, dia a dia. */
 (function () {
-  const fx = { dias: [], abertura: 0 };
+  const fx = { dias: [], abertura: 0, pendente: 0 };
   const hoje0 = new Date();
   $('fx-mes').innerHTML = MESES.map((m, i) => `<option value="${i + 1}" ${i === hoje0.getMonth() ? 'selected' : ''}>${m}</option>`).join('');
   $('fx-ano').innerHTML = anosLista().map(a => `<option value="${a}" ${a === hoje0.getFullYear() ? 'selected' : ''}>${a}</option>`).join('');
@@ -20,8 +20,8 @@
     const qs = new URLSearchParams({ year: $('fx-ano').value, month: $('fx-mes').value });
     if ($('fx-caixa').value) qs.set('caixa', $('fx-caixa').value);
     const r = await api('dre/fluxo-caixa?' + qs);
-    if (r.error) { toast(r.error, 'err'); fx.dias = []; fx.abertura = 0; }
-    else { fx.dias = r.dias || []; fx.abertura = r.saldo_abertura || 0; }
+    if (r.error) { toast(r.error, 'err'); fx.dias = []; fx.abertura = 0; fx.pendente = 0; }
+    else { fx.dias = r.dias || []; fx.abertura = r.saldo_abertura || 0; fx.pendente = r.pendente_anterior || 0; }
     render();
   }
   function render() {
@@ -34,7 +34,10 @@
     $('fx-saldo').classList.toggle('neg-on-dark', ult.saldo < 0);
     $('fx-proj').textContent = fmtBRLs(ult.saldo_projetado);
     const prev = soma('previsto');
-    $('fx-proj-sub').textContent = prev ? `${prev > 0 ? '+' : '−'} ${fmtBRL(Math.abs(prev))} em aberto no mês` : 'nada em aberto no mês';
+    const partes = [];
+    if (prev) partes.push(`${prev > 0 ? '+' : '−'} ${fmtBRL(Math.abs(prev))} em aberto no mês`);
+    if (fx.pendente) partes.push(`${fx.pendente > 0 ? '+' : '−'} ${fmtBRL(Math.abs(fx.pendente))} em aberto de meses anteriores`);
+    $('fx-proj-sub').textContent = partes.length ? partes.join(' · ') : 'nada em aberto';
     const so = fv('fx-dias') === 'mov', hoje = hojeISO();
     const linhas = d.filter(x => !so || x.receita || x.despesa || x.transferencia || x.receita_prevista || x.despesa_prevista || x.data === hoje);
     const v = (n, cls = '') => n ? `<td class="money r ${cls}">${fmtBRL(n)}</td>` : '<td class="r dim">—</td>';

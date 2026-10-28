@@ -71,7 +71,7 @@ class ParceiroController extends Controller
         Upload::apagar($row['foto_path']); Upload::apagar($row['contrato_path']);
         foreach (Documento::doParceiro($id) as $d) Upload::apagar($d['arquivo_path']);
         Database::run('DELETE FROM documentos WHERE parceiro_id=?', [$id]);
-        $this->log('delete', 'parceiros', $id, $row['nome']);
+        $this->log('delete', 'parceiros', $id, $row['nome'], null, $row);
         return ['ok' => true];
     }
 }

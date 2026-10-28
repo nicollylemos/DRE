@@ -4,6 +4,7 @@ namespace App\Controllers\Api;
 use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\HttpException;
+use App\Models\NotaFiscal;
 use App\Models\Transacao;
 use App\Models\Transferencia;
 
@@ -34,6 +35,12 @@ class TransacaoController extends Controller
         $f['user_id'] = $u['id'];
         $id = Transacao::create($f);
         $this->log('create', 'transactions', $id, "{$f['tipo']} - {$f['descricao']} - R\${$f['valor']}");
+        // Lançamento gerado a partir de uma nota fiscal: já deixa os dois vinculados.
+        $nfId = (int) $this->input('nota_fiscal_id', 0);
+        if ($nfId && Auth::podeEditar('notas-fiscais') && NotaFiscal::find($nfId)) {
+            NotaFiscal::update($nfId, ['transaction_id' => $id, 'updated_at' => date('Y-m-d H:i:s')]);
+            $this->log('vincular', 'notas_fiscais', $nfId, "→ lançamento #$id");
+        }
         return ['id' => $id];
     }
 
@@ -43,6 +50,12 @@ class TransacaoController extends Controller
         $id = (int) $id;
         $atual = Transacao::findOrFail($id, 'Lançamento não encontrado');
         $f = Transacao::campos($this->body());
+        // Taxa de cartão é a do dia do lançamento: se a forma ou o valor não mudaram, mantém a taxa original
+        // (mudar a taxa da forma de pagamento depois não pode alterar o DRE de meses passados).
+        if ($f['tipo'] === $atual['tipo'] && $f['forma_pagamento_nome'] === (string) $atual['forma_pagamento_nome'] && abs($f['valor'] - (float) $atual['valor']) < 0.005) {
+            $f['taxa_mdr'] = round((float) $atual['taxa_mdr'], 2);
+            $f['valor_liquido'] = round($f['valor'] - $f['taxa_mdr'], 2);
+        }
         Transacao::update($id, $f);
         $diff = diff_log($atual, $f, Transacao::ROTULOS);
         $this->log('update', 'transactions', $id, "{$f['tipo']} - {$f['descricao']} - R\${$f['valor']}" . ($diff ? " — $diff" : ''));
@@ -71,7 +84,9 @@ class TransacaoController extends Controller
         $id = (int) $id;
         $row = Transacao::findOrFail($id, 'Lançamento não encontrado');
         Transacao::delete($id);
-        $this->log('delete', 'transactions', $id, "{$row['tipo']} - {$row['descricao']} - R\${$row['valor']}");
+        // A nota fiscal continua guardada, só perde o vínculo.
+        NotaFiscal::desvincularLancamento($id);
+        $this->log('delete', 'transactions', $id, "{$row['tipo']} - {$row['descricao']} - R\${$row['valor']}", null, $row);
         return ['ok' => true];
     }
 
@@ -97,7 +112,7 @@ class TransacaoController extends Controller
         $id = (int) $id;
         $row = Transferencia::findOrFail($id, 'Transferência não encontrada');
         Transferencia::delete($id);
-        $this->log('delete', 'transfers', $id, "{$row['origem_nome']} → {$row['destino_nome']} - R\${$row['valor']}");
+        $this->log('delete', 'transfers', $id, "{$row['origem_nome']} → {$row['destino_nome']} - R\${$row['valor']}", null, $row);
         return ['ok' => true];
     }
 }

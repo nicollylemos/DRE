@@ -35,14 +35,27 @@ class FormaPagamentoController extends Controller
         return ['ok' => true];
     }
 
+    /** Inativar / reativar: some dos novos lançamentos, mas os antigos e os relatórios continuam com ela. */
+    public function situacao($id): array
+    {
+        $this->autorizarEdicao('cad-formas');
+        $id = (int) $id;
+        $row = FormaPagamento::findOrFail($id, 'Forma de pagamento não encontrada');
+        $ativo = $this->input('ativo') ? 1 : 0;
+        if ($ativo === (int) $row['ativo']) return ['ok' => true, 'ativo' => $ativo];
+        FormaPagamento::update($id, ['ativo' => $ativo]);
+        $this->log('update', 'formas_pagamento', $id, $row['nome'] . ($ativo ? ' — reativada' : ' — inativada'));
+        return ['ok' => true, 'ativo' => $ativo];
+    }
+
     public function destroy($id): array
     {
         $this->autorizarEdicao('cad-formas');
         $id = (int) $id;
         $row = FormaPagamento::findOrFail($id, 'Forma de pagamento não encontrada');
-        if ($uso = FormaPagamento::uso($row['nome'])) throw new HttpException(400, "\"{$row['nome']}\" está em $uso lançamento(s). Apagar tiraria a taxa desses lançamentos dos relatórios — renomeie ou ajuste em vez de apagar.");
+        if ($uso = FormaPagamento::uso($row['nome'])) throw new HttpException(400, "\"{$row['nome']}\" está em $uso lançamento(s). Apagar tiraria a taxa desses lançamentos dos relatórios — inative em vez de apagar.");
         FormaPagamento::delete($id);
-        $this->log('delete', 'formas_pagamento', $id, $row['nome']);
+        $this->log('delete', 'formas_pagamento', $id, $row['nome'], null, $row);
         return ['ok' => true];
     }
 }

@@ -1,0 +1,33 @@
+{
+ "data": "2026-10-28",
+ "arquivo": "importacao_1000_linhas.xlsx (1.000 lançamentos, 13 colunas)",
+ "meta_s": 5,
+ "tela": "Tempo de processamento: leitura 0,1 s · conferência 0,4 s · gravação 0,91 s = 1,41 s",
+ "api_3_rodadas": [
+  {
+   "leitura_s": 0.048,
+   "conferencia_s": 0.352,
+   "gravacao_s": 0.906,
+   "total_s": 1.306,
+   "importados": 1000,
+   "erro": null
+  },
+  {
+   "leitura_s": 0.055,
+   "conferencia_s": 0.388,
+   "gravacao_s": 0.978,
+   "total_s": 1.421,
+   "importados": 1000,
+   "erro": null
+  },
+  {
+   "leitura_s": 0.053,
+   "conferencia_s": 0.332,
+   "gravacao_s": 0.911,
+   "total_s": 1.297,
+   "importados": 1000,
+   "erro": null
+  }
+ ],
+ "pior_total_s": 1.421
+}

@@ -37,8 +37,9 @@ abstract class Controller
 
     protected function falhar(int $status, string $msg): void { throw new HttpException($status, $msg); }
 
-    protected function log(string $acao, string $entidade, $id = null, $detalhes = null, ?string $username = null): void
+    /** $dados = cópia do registro (nas exclusões guarda o que foi apagado). */
+    protected function log(string $acao, string $entidade, $id = null, $detalhes = null, ?string $username = null, ?array $dados = null): void
     {
-        Log::registrar($acao, $entidade, $id, $detalhes, $username);
+        Log::registrar($acao, $entidade, $id, $detalhes, $username, $dados);
     }
 }

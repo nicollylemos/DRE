@@ -6,7 +6,9 @@ use App\Core\Controller;
 use App\Core\HttpException;
 use App\Core\Permissions;
 use App\Core\Response;
+use App\Core\Termos;
 use App\Core\View;
+use App\Models\PasswordReset;
 use App\Models\User;
 
 /**
@@ -21,6 +23,7 @@ class PageController extends Controller
         'dre'          => ['DRE', ['pages/dre.js']],
         'calendario'   => ['Calendário', ['lancamento-form.js', 'pages/calendario.js']],
         'lancamentos'  => ['Lançamentos', ['lancamento-form.js', 'pages/lancamentos.js']],
+        'notas-fiscais' => ['Notas fiscais', ['lancamento-form.js', 'pages/notas-fiscais.js']],
         'fluxo-caixa'  => ['Fluxo de Caixa', ['pages/fluxo.js']],
         'importacao'   => ['Importar / Exportar', ['pages/importacao.js']],
         'clientes'     => ['Clientes', ['pages/clientes.js']],
@@ -42,15 +45,39 @@ class PageController extends Controller
     public function login(): void
     {
         $u = Auth::user();
-        if ($u && !(int) $u['deve_trocar_senha']) Response::redirect($this->destino());
+        // Link do e-mail "Esqueci minha senha": ?redefinir=<token>
+        $token = (string) ($_GET['redefinir'] ?? '');
+        if ($token !== '') {
+            if ($u) Auth::logout();
+            $r = PasswordReset::valido($token);
+            View::render('auth/login', [
+                'titulo' => 'Criar nova senha', 'precisaSetup' => false, 'trocarSenha' => false, 'aceitarTermos' => false,
+                'redefinir' => $r ? ['token' => $token, 'username' => $r['username'], 'nome' => $r['nome']] : ['invalido' => true],
+                'usuario' => null, 'next' => '', 'scriptsAuth' => ['pages/login.js'],
+            ], 'layouts/auth');
+        }
+        $trocar = $u && (int) $u['deve_trocar_senha'];
+        $termos = $u && !$trocar && Termos::pendente($u);
+        if ($u && !$trocar && !$termos) Response::redirect($this->destino());
         View::render('auth/login', [
             'titulo' => 'Entrar',
             'precisaSetup' => User::count() === 0,
-            'trocarSenha' => $u && (int) $u['deve_trocar_senha'],
+            'trocarSenha' => $trocar,
+            'aceitarTermos' => $termos,
+            'redefinir' => null,
             'usuario' => $u,
             'next' => $this->destino(false),
             'scriptsAuth' => ['pages/login.js'],
         ], 'layouts/auth');
+    }
+
+    /** LGPD — páginas públicas (abrem sem login, inclusive pelo link da tela de entrada). */
+    public function privacidade(): void { $this->documentoLgpd('privacidade', 'Política de privacidade'); }
+    public function termos(): void { $this->documentoLgpd('termos', 'Termo de uso e consentimento'); }
+
+    private function documentoLgpd(string $doc, string $titulo): void
+    {
+        View::render("publico/$doc", ['titulo' => $titulo, 'doc' => $doc, 'logado' => Auth::check()], 'layouts/auth');
     }
 
     /** Destino seguro depois do login (?next=rota), só rotas internas conhecidas. */

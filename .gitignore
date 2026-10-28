@@ -6,3 +6,6 @@ storage/sessions/*
 storage/imports/*
 !storage/imports/.gitkeep
 storage/schema_version
+storage/notas/*
+!storage/notas/.gitkeep
+storage/mail/*

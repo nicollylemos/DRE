@@ -41,7 +41,7 @@ class CaixaController extends Controller
         $row = Caixa::findOrFail($id, 'Caixa não encontrado');
         if ($uso = Caixa::usoDoNome($row['nome'])) throw new HttpException(400, "\"{$row['nome']}\" tem $uso movimentação(ões). Apagar faria o saldo sumir dos relatórios — renomeie em vez de apagar.");
         Caixa::delete($id);
-        $this->log('delete', 'caixas', $id, $row['nome']);
+        $this->log('delete', 'caixas', $id, $row['nome'], null, $row);
         return ['ok' => true];
     }
 }

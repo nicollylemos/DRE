@@ -469,7 +469,7 @@ html.menu-fechado .side-nav{overflow:visible}
   radial-gradient(600px 600px at 0% 100%,rgba(255,255,255,.07),transparent 70%),var(--navy);color:#fff;display:flex;align-items:center;padding:56px}
 .auth-brand::after{content:'';position:absolute;right:-120px;bottom:-120px;width:420px;height:420px;border-radius:50%;border:60px solid rgba(201,165,95,.08)}
 .auth-brand-in{position:relative;z-index:1;max-width:460px}
-.auth-brand-logo{width:150px;height:auto;background:#fff;border-radius:18px;padding:14px 18px;margin-bottom:40px;box-shadow:0 12px 30px rgba(0,0,0,.25)}
+.auth-brand-logo{display:block;width:190px;height:auto;margin-bottom:40px;filter:drop-shadow(0 10px 28px rgba(0,0,0,.35))}
 .auth-brand h2{font-size:38px;line-height:1.12;font-weight:800;letter-spacing:-.03em;margin-bottom:26px}
 .auth-bullets{list-style:none;display:flex;flex-direction:column;gap:14px}
 .auth-bullets li{display:flex;gap:12px;align-items:center;font-size:15px;color:rgba(255,255,255,.82);font-weight:600}
@@ -693,3 +693,109 @@ html.menu-fechado .side-nav{overflow:visible}
   .cal.big button{min-height:48px}
   .tabs{overflow-x:auto}
 }
+
+/* ═══════════════════════ v3.1 — NOTAS FISCAIS, FORMAS, LGPD ═════════════════ */
+.tp.transferencia{background:#EFE9F6;color:#5B4690}
+.tbl tbody tr.row-off td{color:var(--muted)}
+.tbl tbody tr.row-off .ttl{color:var(--muted)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;letter-spacing:.02em}
+/* etiquetas de arquivo (PDF / XML / NF) */
+.fbadge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:.04em;text-decoration:none;margin-right:4px;vertical-align:1px}
+.fbadge.pdf{background:var(--neg-soft);color:var(--neg)}
+.fbadge.xml{background:var(--indigo-soft);color:var(--navy-2)}
+.fbadge.nf{background:var(--gold-soft);color:var(--warn);height:20px;padding:0 6px;font-size:10.5px;margin-left:4px}
+a.fbadge:hover{filter:brightness(.95);text-decoration:underline}
+.tbl td.nf-nota{max-width:250px;min-width:190px;line-height:1.5}
+.nf-desc{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nf-tx{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+.nf-tx small{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+/* formulário */
+.nf-arqs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.nf-arq{display:flex;flex-direction:column;gap:8px;min-width:0}
+.drop.sm{padding:18px 14px;gap:2px;border-radius:14px}
+.drop.sm svg{width:26px;height:26px;margin-bottom:2px}
+.drop.sm strong{font-size:14px}
+.nf-atual{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;min-width:0}
+.nf-atual .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.grid.inner2{grid-template-columns:1fr 90px;gap:12px}
+.nf-vinc-box{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--indigo-soft);color:var(--navy-2);font-size:13.5px}
+.nf-vinc-box:empty{display:none}
+.nf-vinc-box svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;flex-shrink:0}
+/* visualizar */
+.modal-box.xl{max-width:1040px}
+.nfv-body{gap:0}
+.nfv-pdf iframe{width:100%;height:min(68vh,760px);border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.nfv-pdf p{margin-top:8px}
+.nfv-xml{max-height:58vh;overflow:auto;background:#1E2040;color:#E7E8F5;border-radius:12px;padding:14px 16px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;white-space:pre;tab-size:2}
+.nfv-resumo{display:flex;flex-wrap:wrap;gap:12px 24px;margin-bottom:12px}
+.nfv-resumo b{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.nfv-resumo .chips{max-width:none}
+#nfv-foot-l,#nfv-foot-r{display:flex;gap:10px;flex-wrap:wrap}
+#nfv-foot-l .btn{min-width:0}
+/* vincular */
+.nfl-tools{margin-bottom:0}
+.nfl-tools .search{max-width:none}
+.nfl-lista{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto;padding:2px}
+.nfl-item{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;transition:border-color .12s,background .12s}
+.nfl-item:hover{background:var(--surface-2)}
+.nfl-item.on{border-color:var(--navy-2);background:var(--indigo-soft)}
+.nfl-item input{accent-color:var(--navy);width:17px;height:17px;flex-shrink:0}
+.nfl-main{flex:1;min-width:0}
+.nfl-main b{display:block;color:var(--ink);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nfl-main small{display:block;color:var(--muted);font-size:12.5px;font-weight:600}
+.nfl-v{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.nfl-v .money{font-variant-numeric:tabular-nums;color:var(--ink)}
+/* lote */
+.lote-arqs{display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow:auto}
+#lote-passo2{display:flex;flex-direction:column;gap:12px}
+#lote-passo2.hidden{display:none}
+#lote-res td small{margin-top:3px}
+@media (max-width:720px){
+  .nf-arqs{grid-template-columns:1fr}
+  .grid.inner2{grid-template-columns:1fr 90px}
+  .nfl-item{flex-wrap:wrap}.nfl-v{flex-direction:row;align-items:center;width:100%;justify-content:space-between}
+  .nfv-pdf iframe{height:60vh}
+  #nfv-foot-l,#nfv-foot-r{width:100%}
+  .modal-foot.spread{flex-direction:column-reverse;align-items:stretch;gap:10px}
+}
+
+/* login: esqueci a senha, aceite LGPD */
+.auth-esqueci{font-size:12.5px;font-weight:700}
+.auth-ok{font-size:13.5px;color:var(--pos);background:var(--pos-soft);padding:10px 12px;border-radius:10px;font-weight:600;line-height:1.45}
+.check.top{align-items:flex-start;line-height:1.45}.check.top input{margin-top:2px}
+.check a,.auth-version a{color:var(--navy-2);font-weight:700}
+.auth-version a{text-decoration:none}.auth-version a:hover{text-decoration:underline}
+.field>span .opc{font-size:12px;font-weight:600;color:var(--faint)}
+.termos-resumo{font-size:13.5px;line-height:1.5;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;max-height:300px;overflow:auto}
+.termos-resumo ul{margin:8px 0 0 18px;display:flex;flex-direction:column;gap:6px}
+.perfil-lgpd{line-height:1.45}
+/* páginas públicas de LGPD */
+.lgpd{min-height:100vh;background:var(--bg)}
+.lgpd-top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 24px;background:var(--navy);color:#fff;flex-wrap:wrap}
+.lgpd-marca{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-size:15px}
+.lgpd-marca img{width:34px;height:34px;border-radius:9px;background:#fff;padding:3px}
+.lgpd-marca b{color:var(--gold)}
+.lgpd-top nav{display:flex;gap:6px}
+.lgpd-top nav a{color:rgba(255,255,255,.75);text-decoration:none;font-weight:700;font-size:14px;padding:8px 12px;border-radius:9px}
+.lgpd-top nav a.on,.lgpd-top nav a:hover{background:rgba(255,255,255,.12);color:#fff}
+.lgpd-doc{max-width:820px;margin:28px auto 60px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:36px 40px;box-shadow:var(--sh-card);line-height:1.6;font-size:15px}
+.lgpd-doc h1{font-size:30px;font-weight:800;color:var(--ink);letter-spacing:-.025em;margin-bottom:10px}
+.lgpd-doc h2{font-size:18px;font-weight:800;color:var(--ink);margin:26px 0 8px}
+.lgpd-doc p{margin-bottom:10px}
+.lgpd-doc ul,.lgpd-doc ol{margin:0 0 10px 22px;display:flex;flex-direction:column;gap:6px}
+.lgpd-doc a{color:var(--navy-2);font-weight:700}
+.lgpd-doc .btn{color:#fff}
+.lgpd-ver{font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.lgpd-lead{font-size:16px;color:var(--text)}
+.lgpd-tbl{width:100%;border-collapse:collapse;margin:6px 0 12px;font-size:14px}
+.lgpd-tbl th{background:var(--surface-2);text-align:left;padding:10px 12px;color:var(--ink);font-weight:800;border-bottom:1px solid var(--line)}
+.lgpd-tbl td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.lgpd-volta{margin-top:28px}
+@media (max-width:720px){
+  .lgpd-doc{margin:0;border-radius:0;border:none;padding:24px 18px 40px}
+  .lgpd-doc h1{font-size:24px}
+  .lgpd-tbl,.lgpd-tbl tbody,.lgpd-tbl tr,.lgpd-tbl td{display:block}.lgpd-tbl thead{display:none}
+  .lgpd-tbl tr{border-bottom:1px solid var(--line);padding:6px 0}.lgpd-tbl td{border:none;padding:4px 0}
+  .lgpd-tbl td:first-child{font-weight:700;color:var(--ink)}
+}
+.imp-tempo{font-size:13px;color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}.imp-tempo b{color:var(--pos)}

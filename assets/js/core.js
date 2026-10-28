@@ -43,7 +43,7 @@ async function api(path, method = 'GET', body = null) {
       location.href = url('login?next=' + encodeURIComponent(APP.pagina || ''));
       return { error: 'Sessão expirada' };
     }
-    if (res.status === 403 && data.code === 'TROCAR_SENHA') { location.href = url('login'); return { error: data.error }; }
+    if (res.status === 403 && (data.code === 'TROCAR_SENHA' || data.code === 'ACEITAR_TERMOS') && !document.body.classList.contains('auth-body')) { location.href = url('login?next=' + encodeURIComponent(APP.pagina || '')); return { error: data.error }; }
     if (!res.ok && !data.error) data.error = `Erro ${res.status}`;
     if (data && data.csrf) APP.csrf = data.csrf;
     return data;
@@ -183,6 +183,10 @@ const ICO = {
   Duplicar: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
   Desfazer: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
   'Ver registros': '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  'Nota fiscal': '<path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5M9 13h7M9 17h7M9 9h2"/>',
+  'Anexar nota fiscal': '<path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5M13 11v7M9.5 14.5h7"/>',
+  Vincular: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
+  'Gerar lançamento': '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M12 13v4M10 15h4"/>',
 };
 const menuAcoes = {};  // id da linha → lista de ações (registrado no render)
 let menuBtnAtual = null;
@@ -361,6 +365,7 @@ function renderAvatar(el, u) {
     $('perfil-error').textContent = ''; $('senha-error').textContent = '';
     $('senha-nova').dispatchEvent(new Event('input'));
     renderAvatar($('perfil-avatar'), u);
+    if ($('perfil-aceite')) $('perfil-aceite').textContent = u.termos_aceitos_em ? ` (aceitos em ${fmtDataHora(u.termos_aceitos_em)}, versão ${u.termos_versao})` : '';
     abrirModal('modal-perfil');
   });
   $('perfil-foto').addEventListener('change', () => { const f = $('perfil-foto').files[0]; if (f) $('perfil-avatar').innerHTML = `<img src="${URL.createObjectURL(f)}" alt=""/>`; });

@@ -41,7 +41,7 @@ class ClienteController extends Controller
         $id = (int) $id;
         $row = Cliente::findOrFail($id, 'Cliente não encontrado');
         Cliente::delete($id);
-        $this->log('delete', 'clientes', $id, $row['nome'] . ($row['cnpj_cpf'] ? " ({$row['cnpj_cpf']})" : ''));
+        $this->log('delete', 'clientes', $id, $row['nome'] . ($row['cnpj_cpf'] ? " ({$row['cnpj_cpf']})" : ''), null, $row);
         return ['ok' => true];
     }
 }

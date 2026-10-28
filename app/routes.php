@@ -18,6 +18,7 @@ use App\Controllers\Api\FormaPagamentoController;
 use App\Controllers\Api\FornecedorController;
 use App\Controllers\Api\ImportacaoController;
 use App\Controllers\Api\LogController;
+use App\Controllers\Api\NotaFiscalController;
 use App\Controllers\Api\ParceiroController;
 use App\Controllers\Api\PerfilController;
 use App\Controllers\Api\TransacaoController;
@@ -32,6 +33,9 @@ $router->post('api/auth/logout', [AuthController::class, 'logout']);
 $router->get('api/auth/me', [AuthController::class, 'me']);
 $router->post('api/auth/trocar-senha', [AuthController::class, 'trocarSenha']);
 $router->add('POST|PUT', 'api/auth/profile', [AuthController::class, 'perfil']);
+$router->post('api/auth/aceitar-termos', [AuthController::class, 'aceitarTermos']);
+$router->post('api/auth/esqueci-senha', [AuthController::class, 'esqueciSenha']);
+$router->post('api/auth/redefinir-senha', [AuthController::class, 'redefinirSenha']);
 
 // ─── Relatórios ─────────────────────────────────────────────────────────────
 $router->get('api/dre', [DreController::class, 'dashboard']);
@@ -52,6 +56,21 @@ $router->delete('api/transactions/:id', [TransacaoController::class, 'destroy'])
 $router->get('api/transfers', [TransacaoController::class, 'transferencias']);
 $router->post('api/transfers', [TransacaoController::class, 'criarTransferencia']);
 $router->delete('api/transfers/:id', [TransacaoController::class, 'apagarTransferencia']);
+
+// ─── Notas fiscais (rotas fixas antes das que têm :id) ──────────────────────
+$router->get('api/notas-fiscais', [NotaFiscalController::class, 'index']);
+$router->post('api/notas-fiscais', [NotaFiscalController::class, 'store']);
+$router->post('api/notas-fiscais/ler-xml', [NotaFiscalController::class, 'lerXml']);
+$router->post('api/notas-fiscais/lote', [NotaFiscalController::class, 'lote']);
+$router->get('api/notas-fiscais/:id', [NotaFiscalController::class, 'show']);
+$router->add('POST|PUT', 'api/notas-fiscais/:id', [NotaFiscalController::class, 'update']);
+$router->delete('api/notas-fiscais/:id', [NotaFiscalController::class, 'destroy']);
+$router->get('api/notas-fiscais/:id/arquivo/:qual', [NotaFiscalController::class, 'arquivo']);
+$router->delete('api/notas-fiscais/:id/arquivo/:qual', [NotaFiscalController::class, 'removerArquivo']);
+$router->get('api/notas-fiscais/:id/xml', [NotaFiscalController::class, 'xml']);
+$router->patch('api/notas-fiscais/:id/vinculo', [NotaFiscalController::class, 'vincular']);
+$router->get('api/notas-fiscais/:id/candidatos', [NotaFiscalController::class, 'candidatos']);
+$router->get('api/notas-fiscais/:id/lancamento', [NotaFiscalController::class, 'sugestaoLancamento']);
 
 // ─── Cadastros ──────────────────────────────────────────────────────────────
 $router->get('api/cadastros', [CadastroController::class, 'resumo']);
@@ -100,6 +119,7 @@ $router->delete('api/caixas/:id', [CaixaController::class, 'destroy']);
 $router->get('api/formas_pagamento', [FormaPagamentoController::class, 'index']);
 $router->post('api/formas_pagamento', [FormaPagamentoController::class, 'store']);
 $router->put('api/formas_pagamento/:id', [FormaPagamentoController::class, 'update']);
+$router->patch('api/formas_pagamento/:id/situacao', [FormaPagamentoController::class, 'situacao']);
 $router->delete('api/formas_pagamento/:id', [FormaPagamentoController::class, 'destroy']);
 
 // ─── Usuários e níveis de acesso (admin) ────────────────────────────────────
@@ -117,6 +137,7 @@ $router->put('api/perfis/:id', [PerfilController::class, 'update']);
 $router->delete('api/perfis/:id', [PerfilController::class, 'destroy']);
 
 $router->get('api/logs', [LogController::class, 'index']);
+$router->get('api/logs/:id', [LogController::class, 'show']);
 
 // ─── Exportar / Importar ────────────────────────────────────────────────────
 $router->get('api/export/excel', [ExportController::class, 'excel']);
@@ -135,4 +156,6 @@ $router->delete('api/importacao/:id', [ImportacaoController::class, 'desfazer'])
 // ─── Páginas ────────────────────────────────────────────────────────────────
 $router->get('', [PageController::class, 'inicio']);
 $router->get('login', [PageController::class, 'login']);
+$router->get('privacidade', [PageController::class, 'privacidade']);
+$router->get('termos', [PageController::class, 'termos']);
 $router->get(':pagina', [PageController::class, 'pagina']);

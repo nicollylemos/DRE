@@ -3,7 +3,10 @@
   const ed = podeEditar('importacao');
   const TIPOS = { lancamentos: 'Lançamentos', clientes: 'Clientes', fornecedores: 'Fornecedores' };
   const SIT = { ok: ['Pronta', 'on'], aviso: ['Com aviso', 'open'], erro: ['Com erro', 'late'], duplicado: ['Duplicada', 'off'] };
-  const st = { tipo: 'lancamentos', arquivo: null, analise: null, previa: null, filtro: '', pagina: 1 };
+  const st = { tipo: 'lancamentos', arquivo: null, analise: null, previa: null, filtro: '', pagina: 1, tempos: {} };
+  const seg = ms => (ms / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + ' s';
+  /** Mede quanto o sistema levou em cada passo (sem contar o tempo de quem está conferindo). */
+  async function medir(chave, fn) { const t = performance.now(); const r = await fn(); st.tempos[chave] = performance.now() - t; return r; }
 
   // ─── Exportar ───
   const ano = new Date().getFullYear();
@@ -82,7 +85,8 @@
     const fd = new FormData();
     fd.append('tipo', st.tipo); fd.append('cabecalho', $('imp-cabecalho').checked ? '1' : '0'); fd.append('arquivo', st.arquivo);
     carregando($('imp-ler'), true);
-    const r = await api('importacao/analisar', 'POST', fd);
+    st.tempos = {};
+    const r = await medir('leitura', () => api('importacao/analisar', 'POST', fd));
     carregando($('imp-ler'), false);
     if (r.error) { $('imp-erro-1').textContent = r.error; return; }
     st.analise = r;
@@ -127,7 +131,7 @@
     const usadas = Object.values(b.mapeamento).filter(v => v !== null);
     if (new Set(usadas).size !== usadas.length) { $('imp-erro-2').textContent = 'A mesma coluna foi escolhida para dois campos.'; return; }
     carregando($('imp-validar'), true);
-    const r = await api('importacao/validar', 'POST', b);
+    const r = await medir('conferencia', () => api('importacao/validar', 'POST', b));
     carregando($('imp-validar'), false);
     if (r.error) { $('imp-erro-2').textContent = r.error; if (r.error.includes('expirou')) passo(1); return; }
     st.previa = r; st.filtro = ''; st.pagina = 1; fset('imp-f', '');
@@ -174,13 +178,14 @@
     const p = st.previa;
     if (!await confirmar(`Importar ${p.importaveis} linha(s) de "${p.arquivo}" em ${TIPOS[p.tipo]}?`, { titulo: 'Confirmar importação', ok: 'Importar', perigo: false })) return;
     carregando($('imp-confirmar'), true);
-    const r = await api('importacao/confirmar', 'POST', corpo());
+    const r = await medir('gravacao', () => api('importacao/confirmar', 'POST', corpo()));
     carregando($('imp-confirmar'), false);
     if (r.error) { $('imp-erro-3').textContent = r.error; return; }
     $('imp-ok').innerHTML = `<div class="imp-ok-ico"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
       <h3>${r.importados} ${r.importados === 1 ? 'registro importado' : 'registros importados'}</h3>
       <p>${esc(r.arquivo)} → ${TIPOS[r.tipo]}${r.ignorados ? ` · ${r.ignorados} linha(s) pulada(s)` : ''}${r.categorias_criadas ? ` · ${r.categorias_criadas} categoria(s) criada(s)` : ''}</p>
       ${r.tipo === 'lancamentos' ? `<p>Saldo importado: <b class="${r.saldo < 0 ? 'neg' : 'pos'}">${fmtBRLs(r.saldo)}</b></p>` : ''}
+      <p class="imp-tempo" id="imp-tempo">Tempo de processamento: leitura ${seg(st.tempos.leitura || 0)} · conferência ${seg(st.tempos.conferencia || 0)} · gravação ${seg(st.tempos.gravacao || 0)} = <b>${seg((st.tempos.leitura || 0) + (st.tempos.conferencia || 0) + (st.tempos.gravacao || 0))}</b></p>
       <p class="muted">Errou alguma coisa? Use "Desfazer" no histórico abaixo — apaga só o que essa importação criou.</p>`;
     $('imp-ver').href = r.tipo === 'lancamentos' ? url('lancamentos?importacao=' + r.id) : url(r.tipo);
     passo(4);

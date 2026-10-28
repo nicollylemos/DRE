@@ -21,6 +21,7 @@ final class Permissions
         'dre'              => ['DRE', 'Visão geral', 'dre', false, ''],
         'calendario'       => ['Calendário', 'Visão geral', 'calendario', false, ''],
         'lancamentos'      => ['Lançamentos', 'Financeiro', 'lancamentos', true, 'criar, editar, dar baixa e apagar lançamentos e transferências'],
+        'notas-fiscais'    => ['Notas fiscais', 'Financeiro', 'notas-fiscais', true, 'anexar, substituir, vincular e remover notas fiscais (PDF/XML)'],
         'fluxo-caixa'      => ['Fluxo de Caixa', 'Financeiro', 'fluxo-caixa', false, ''],
         'importacao'       => ['Importar / Exportar', 'Financeiro', 'importacao', true, 'importar planilhas e desfazer importações (ver = só exportar)'],
         'cad-clientes'     => ['Clientes', 'Cadastros', 'clientes', true, 'cadastrar, editar e apagar'],

@@ -11,10 +11,13 @@ use PDOException;
 final class App
 {
     /** Rotas da API que aceitam POST sem token CSRF (ainda não existe sessão). */
-    private const SEM_CSRF = ['api/auth/login', 'api/auth/register'];
+    private const SEM_CSRF = ['api/auth/login', 'api/auth/register', 'api/auth/esqueci-senha', 'api/auth/redefinir-senha'];
 
     /** Com troca de senha pendente, só estas rotas funcionam. */
-    private const DURANTE_TROCA = ['api/auth/me', 'api/auth/trocar-senha', 'api/auth/logout', 'api/auth/setup-status', 'login', 'sair'];
+    private const DURANTE_TROCA = ['api/auth/me', 'api/auth/trocar-senha', 'api/auth/logout', 'api/auth/setup-status', 'login', 'sair', 'privacidade', 'termos'];
+
+    /** Sem aceite do Termo/Política (LGPD), só estas rotas funcionam. */
+    private const DURANTE_TERMOS = ['api/auth/me', 'api/auth/aceitar-termos', 'api/auth/logout', 'api/auth/setup-status', 'login', 'sair', 'privacidade', 'termos'];
 
     public static function run(): void
     {
@@ -36,6 +39,10 @@ final class App
             if ($u && (int) $u['deve_trocar_senha'] === 1 && !in_array($path, self::DURANTE_TROCA, true)) {
                 if ($api) throw new HttpException(403, 'Defina uma nova senha para continuar', 'TROCAR_SENHA');
                 Response::redirect('login');
+            }
+            if ($u && (int) $u['deve_trocar_senha'] !== 1 && Termos::pendente($u) && !in_array($path, self::DURANTE_TERMOS, true)) {
+                if ($api) throw new HttpException(403, 'Aceite o Termo de uso e a Política de privacidade para continuar', 'ACEITAR_TERMOS');
+                Response::redirect('login' . ($path !== '' ? '?next=' . rawurlencode($path) : ''));
             }
 
             [$action, $params] = $router->match($method, $path);

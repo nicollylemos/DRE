@@ -1,6 +1,6 @@
 <section class="page active" id="page-logs">
   <header class="page-head">
-    <div><h1>Logs</h1><p>Histórico de tudo que foi criado, alterado ou apagado no sistema, com quem fez e quando.</p></div>
+    <div><h1>Logs</h1><p>Histórico de tudo que foi criado, alterado ou apagado no sistema, com quem fez e quando. Nas exclusões fica guardada uma cópia do que foi apagado.</p></div>
   </header>
   <form class="toolbar" id="log-toolbar">
     <div class="select"><select id="log-f-acao" aria-label="Ação"></select></div>
@@ -14,7 +14,7 @@
   <div class="table-card">
     <div class="table-scroll">
       <table class="tbl" id="log-table">
-        <thead><tr><th>Data / hora</th><th>Usuário</th><th>Ação</th><th>Área</th><th>Detalhes</th><th>IP</th></tr></thead>
+        <thead><tr><th>Data / hora</th><th>Usuário</th><th>Ação</th><th>Área</th><th>Detalhes</th><th>IP</th><th class="act"></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>

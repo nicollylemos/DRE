@@ -1,0 +1,41 @@
+{
+ "data": "2026-10-28",
+ "base": "12.000 lançamentos (2024–2026), 400 notas fiscais, 5 caixas",
+ "meta_s": 2,
+ "resultados": [
+  {
+   "cenario": "Rede local (servidor nginx + PHP-FPM)",
+   "tentativas_s": [
+    0.259,
+    0.198,
+    0.157,
+    0.16,
+    0.175,
+    0.168,
+    0.155,
+    0.166,
+    0.134,
+    0.178
+   ],
+   "mediana_s": 0.167,
+   "pior_s": 0.259
+  },
+  {
+   "cenario": "Rede 4G simulada (latência 150 ms, 9 Mbps)",
+   "tentativas_s": [
+    0.768,
+    0.754,
+    0.753,
+    0.757,
+    0.766,
+    0.762,
+    0.761,
+    0.764,
+    0.764,
+    0.76
+   ],
+   "mediana_s": 0.761,
+   "pior_s": 0.768
+  }
+ ]
+}

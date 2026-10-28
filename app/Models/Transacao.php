@@ -32,6 +32,7 @@ class Transacao extends Model
         $t['valor_liquido'] = $t['valor_liquido'] !== null ? (float) $t['valor_liquido'] : null;
         $t['categoria_id'] = $t['categoria_id'] !== null ? (int) $t['categoria_id'] : null;
         $t['importacao_id'] = isset($t['importacao_id']) && $t['importacao_id'] !== null ? (int) $t['importacao_id'] : null;
+        if (array_key_exists('nf_id', $t)) { $t['nf_id'] = $t['nf_id'] !== null ? (int) $t['nf_id'] : null; $t['nf_qtd'] = (int) ($t['nf_qtd'] ?? 0); }
         return $t + [
             'type' => $t['tipo'], 'date' => substr((string) $t['data'], 0, 10), 'amount' => (float) $t['valor'],
             'description' => $t['descricao'], 'grupo_contas' => $t['grupo'], 'conta' => $t['conta_nome'],
@@ -95,7 +96,10 @@ class Transacao extends Model
 
     public static function listar(array $f): array
     {
-        $sql = 'SELECT * FROM transactions WHERE 1=1'; $p = [];
+        // nf_id / nf_qtd: nota(s) fiscal(is) vinculada(s) — aparecem como etiqueta "NF" na lista.
+        $sql = 'SELECT transactions.*, (SELECT MIN(n.id) FROM notas_fiscais n WHERE n.transaction_id=transactions.id) AS nf_id,
+                       (SELECT COUNT(*) FROM notas_fiscais n WHERE n.transaction_id=transactions.id) AS nf_qtd
+                FROM transactions WHERE 1=1'; $p = [];
         $map = ['year' => 'YEAR(data)=?', 'month' => 'MONTH(data)=?', 'type' => 'tipo=?', 'status' => 'status=?',
                 'categoria_id' => 'categoria_id=?', 'centro_custo' => 'centro_custo_nome=?', 'forma_pagamento' => 'forma_pagamento_nome=?',
                 'caixa_banco' => 'caixa_nome=?', 'importacao_id' => 'importacao_id=?'];

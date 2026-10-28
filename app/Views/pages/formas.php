@@ -1,11 +1,12 @@
 <?php /** @var bool $podeEditar */ ?>
 <section class="page active" id="page-formas">
   <header class="page-head">
-    <div><h1>Formas de pagamento</h1><p>Cartões, PIX, boleto e dinheiro, com prazo de recebimento, taxas e tarifas usadas no cálculo do valor líquido.</p></div>
+    <div><h1>Formas de pagamento</h1><p>Cartões, PIX, boleto, transferência e dinheiro, com prazo de recebimento, taxas e tarifas usadas no cálculo do valor líquido. Formas inativas somem dos novos lançamentos, mas continuam nos antigos.</p></div>
     <?php if ($podeEditar): ?><button class="btn btn-gold" type="button" id="btn-nova-forma"><svg viewBox="0 0 24 24" class="ico-btn"><path d="M12 5v14M5 12h14"/></svg>Nova forma</button><?php endif; ?>
   </header>
   <form class="toolbar" id="fp-toolbar">
-    <div class="pills" id="fp-f-tipo"><button type="button" data-v="" class="on">Todas</button><button type="button" data-v="credito">Crédito</button><button type="button" data-v="debito">Débito</button><button type="button" data-v="pix">PIX</button><button type="button" data-v="boleto">Boleto</button><button type="button" data-v="dinheiro">Dinheiro</button></div>
+    <div class="pills" id="fp-f-tipo"><button type="button" data-v="" class="on">Todas</button><button type="button" data-v="credito">Crédito</button><button type="button" data-v="debito">Débito</button><button type="button" data-v="pix">PIX</button><button type="button" data-v="boleto">Boleto</button><button type="button" data-v="transferencia">Transferência</button><button type="button" data-v="dinheiro">Dinheiro</button></div>
+    <div class="select"><select id="fp-f-sit" aria-label="Situação"><option value="">Ativas e inativas</option><option value="1" selected>Só ativas</option><option value="0">Só inativas</option></select></div>
     <span class="count" id="fp-count"></span>
   </form>
   <div class="table-card">
@@ -23,10 +24,10 @@
     <header class="modal-head"><h2 id="fp-modal-title">Nova forma de pagamento</h2><button class="x" type="button" data-close aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
     <form class="modal-body" id="fp-form">
       <div class="field"><span>Tipo *</span>
-        <div class="seg wrap" id="fp-tipo-seg"><button type="button" data-v="credito" class="on">Cartão de crédito</button><button type="button" data-v="debito">Cartão de débito</button><button type="button" data-v="pix">PIX</button><button type="button" data-v="boleto">Boleto</button><button type="button" data-v="dinheiro">Dinheiro</button></div>
+        <div class="seg wrap" id="fp-tipo-seg"><button type="button" data-v="credito" class="on">Cartão de crédito</button><button type="button" data-v="debito">Cartão de débito</button><button type="button" data-v="pix">PIX</button><button type="button" data-v="boleto">Boleto</button><button type="button" data-v="transferencia">Transferência</button><button type="button" data-v="dinheiro">Dinheiro</button></div>
       </div>
       <div class="grid">
-        <label class="field span2"><span>Nome *</span><input type="text" id="fp-nome" maxlength="100" placeholder="Ex: Visa Crédito 3x, PIX Itaú"/></label>
+        <label class="field span2"><span>Nome *</span><input type="text" id="fp-nome" maxlength="100" placeholder="Ex: Visa Crédito 3x, PIX Itaú, TED Itaú"/></label>
         <label class="field fp-banco"><span>Banco</span><input type="text" id="fp-banco" maxlength="100" list="lista-bancos" placeholder="Ex: Itaú"/></label>
         <label class="field fp-banco"><span>Agência</span><input type="text" id="fp-agencia" maxlength="30" placeholder="0000"/></label>
         <label class="field fp-credito"><span>Parcelas</span><input type="number" id="fp-parcelas" min="1" max="48" step="1" value="1"/></label>

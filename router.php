@@ -7,7 +7,7 @@
 $path = rawurldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '/');
 
 // Mesmos bloqueios do .htaccess
-if (preg_match('#^/(app|storage)(/|$)|/\.|\.(sql|md|lock|log)$|^/router\.php$#', $path)) { http_response_code(403); echo 'Forbidden'; return true; }
+if (preg_match('#^/(app|storage|docs)(/|$)|/\.|\.(sql|md|lock|log)$|^/router\.php$#', $path)) { http_response_code(403); echo 'Forbidden'; return true; }
 if (preg_match('#^/uploads/.*\.(php\d?|phtml|phar|html?|svg|js)$#i', $path)) { http_response_code(403); echo 'Forbidden'; return true; }
 
 $file = __DIR__ . $path;

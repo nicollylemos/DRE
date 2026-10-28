@@ -14,7 +14,7 @@ define('UPLOADS_DIR', ROOT_DIR . '/uploads');
 define('STORAGE_DIR', ROOT_DIR . '/storage');
 
 // Versão do sistema — aparece na tela de login. Atualize a cada entrega.
-define('APP_VERSION', '3.0.0');
+define('APP_VERSION', '3.1.1');
 
 // ─── .env simples (sem Composer) ─────────────────────────────────────────────
 (function () {

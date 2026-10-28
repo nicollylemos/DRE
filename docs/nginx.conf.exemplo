@@ -1,0 +1,28 @@
+# DRE System — exemplo de configuração nginx + PHP-FPM (VPS)
+# Faz o mesmo papel do .htaccess. Troque server_name, root e o socket do PHP-FPM.
+server {
+    listen 80;
+    server_name financeiro.seudominio.com.br;
+    root /var/www/dre;
+    index index.php;
+    client_max_body_size 25m;
+
+    # Código, configuração e arquivos internos (inclui as notas fiscais em storage/notas)
+    location ~ ^/(app|storage|docs)(/|$) { deny all; }
+    location ~ /\.                       { deny all; }
+    location ~ \.(sql|md|lock|log)$      { deny all; }
+    location = /router.php               { deny all; }
+    location ~* ^/uploads/.*\.(php\d?|phtml|phar|html?|svg|js)$ { deny all; }
+
+    location /assets/ { expires 30d; access_log off; }
+
+    location / { try_files $uri /index.php?$query_string; }
+
+    location = /index.php {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param SCRIPT_NAME /index.php;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+    location ~ \.php$ { deny all; }
+}

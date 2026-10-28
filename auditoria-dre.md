@@ -1,3 +1,5 @@
+> **Status na versão PHP 3.1 (out/2026):** esta auditoria foi feita na versão antiga em Node. Conferido no PHP: os itens 2, 4 e 5 já estavam corrigidos (testes com números em `docs/testes/RELATORIO-TESTES.md`, seção 5); o item 7 (log de exclusão sem cópia do apagado) foi corrigido na 3.1. Item 3 e 6 já resolvidos antes. Item 1 (hierarquia contábil completa) continua como decisão de produto.
+
 # Auditoria — Lógica do DRE e Fluxo de Dados (DRE System)
 
 Repositório analisado: `DRE-main` (branch `feature/log-atividades`), arquivos `server.js`, `database.js`, `public/js/app.js`.

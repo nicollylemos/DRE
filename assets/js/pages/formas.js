@@ -2,7 +2,7 @@
 (function () {
   const fp = { lista: [], editId: null };
   const ed = podeEditar('cad-formas');
-  const TIPO = { credito: 'Cartão de crédito', debito: 'Cartão de débito', pix: 'PIX', boleto: 'Boleto', dinheiro: 'Dinheiro' };
+  const TIPO = { credito: 'Cartão de crédito', debito: 'Cartão de débito', pix: 'PIX', boleto: 'Boleto', transferencia: 'Transferência', dinheiro: 'Dinheiro' };
   const pct = v => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '%';
   $('lista-bancos').innerHTML = BANCOS.map(b => `<option value="${esc(b)}">`).join('');
 
@@ -13,15 +13,16 @@
     render();
   }
   function render() {
-    const tipo = fv('fp-f-tipo');
-    const lista = fp.lista.filter(x => !tipo || x.tipo === tipo);
+    const tipo = fv('fp-f-tipo'), sit = $('fp-f-sit').value;
+    const lista = fp.lista.filter(x => (!tipo || x.tipo === tipo) && (sit === '' || String(x.ativo) === sit));
     document.querySelector('#fp-table tbody').innerHTML = lista.length ? lista.map(x => {
       const menu = acoes('fp' + x.id, [
         ed && { label: 'Editar', fn: () => abrir(x) },
+        ed && (x.ativo ? { label: 'Desativar', fn: () => situacao(x, false) } : { label: 'Ativar', fn: () => situacao(x, true) }),
         ed && { label: 'Apagar', danger: true, fn: () => apagar(x) },
       ]);
-      return `<tr>
-        <td><span class="ttl">${esc(x.nome)}</span>${x.qtd_lanc ? `<small>${x.qtd_lanc} lançamento(s)</small>` : ''}</td>
+      return `<tr class="${x.ativo ? '' : 'row-off'}">
+        <td><span class="ttl">${esc(x.nome)}</span>${x.ativo ? '' : ' <span class="st off">Inativa</span>'}${x.qtd_lanc ? `<small>${x.qtd_lanc} lançamento(s)</small>` : ''}</td>
         <td>${x.tipo ? `<span class="tp ${esc(x.tipo)}">${TIPO[x.tipo] || esc(x.tipo)}</span>` : '<span class="tp boleto">Definir tipo</span>'}</td>
         <td>${x.banco || x.agencia ? esc([x.banco, x.agencia && 'ag. ' + x.agencia].filter(Boolean).join(' · ')) : '<span class="dim">—</span>'}</td>
         <td class="r num">${x.parcelas}x</td>
@@ -31,15 +32,23 @@
         <td class="money r" style="font-weight:600">${x.tarifa_fixa ? fmtBRL(x.tarifa_fixa) : '<span class="dim">—</span>'}</td>
         <td class="r">${menu}</td>
       </tr>`;
-    }).join('') : `<tr><td colspan="9" class="empty">${fp.lista.length ? '<strong>Nenhuma forma desse tipo</strong>Troque o filtro.' : '<strong>Nenhuma forma de pagamento</strong>Cadastre cartões, PIX, boleto e dinheiro.'}</td></tr>`;
+    }).join('') : `<tr><td colspan="9" class="empty">${fp.lista.length ? '<strong>Nenhuma forma aqui</strong>Troque os filtros.' : '<strong>Nenhuma forma de pagamento</strong>Cadastre cartões, PIX, boleto, transferência e dinheiro.'}</td></tr>`;
     $('fp-count').textContent = lista.length === 1 ? '1 forma' : `${lista.length} formas`;
   }
   $('fp-f-tipo').addEventListener('change', render);
+  $('fp-f-sit').addEventListener('change', render);
+  async function situacao(x, ativo) {
+    if (!ativo && !await confirmar(`Inativar "${x.nome}"? Ela some da lista ao criar lançamentos, mas os ${x.qtd_lanc || 0} lançamento(s) antigos e os relatórios continuam com ela. Dá pra reativar quando quiser.`, { titulo: 'Inativar forma de pagamento', ok: 'Inativar', perigo: false })) return;
+    const r = await api(`formas_pagamento/${x.id}/situacao`, 'PATCH', { ativo });
+    if (r.error) return toast(r.error, 'err');
+    toast(ativo ? 'Forma de pagamento reativada' : 'Forma de pagamento inativada'); carregar();
+  }
 
   function atualizarTipo() {
     const t = segValor('fp-tipo-seg');
     document.querySelectorAll('#modal-fp .fp-credito').forEach(el => el.classList.toggle('hidden', t !== 'credito'));
     document.querySelectorAll('#modal-fp .fp-banco').forEach(el => el.classList.toggle('hidden', t === 'dinheiro'));
+    $('fp-nome').placeholder = { transferencia: 'Ex: TED Itaú, Transferência Nubank', debito: 'Ex: Débito Rede, Débito Itaú', pix: 'Ex: PIX Itaú' }[t] || 'Ex: Visa Crédito 3x, PIX Itaú';
     simular();
   }
   function simular() {
@@ -78,7 +87,7 @@
     carregar();
   });
   async function apagar(x) {
-    if (x.qtd_lanc) { toast(`"${x.nome}" está em ${x.qtd_lanc} lançamento(s). Edite em vez de apagar.`, 'err'); return; }
+    if (x.qtd_lanc) { toast(`"${x.nome}" está em ${x.qtd_lanc} lançamento(s). Inative em vez de apagar.`, 'err'); return; }
     if (!await confirmar(`Apagar a forma de pagamento "${x.nome}"?`, { ok: 'Apagar' })) return;
     const r = await api('formas_pagamento/' + x.id, 'DELETE');
     if (r.error) return toast(r.error, 'err');

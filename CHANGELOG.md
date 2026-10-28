@@ -1,5 +1,41 @@
 # Changelog
 
+## 3.1.1 — outubro/2026
+- **Dados fictícios** para teste: `php app/Database/DadosFicticios.php` (clínica de jan/2025 a dez/2026, notas com XML e PDF, usuários de teste).
+- **Fluxo de caixa:** o saldo projetado passa a contar as contas em aberto de meses anteriores (atrasadas e, em meses futuros, as que vencem antes). Antes a projeção de um mês futuro ignorava o que ainda estava em aberto.
+- **Taxa de cartão histórica:** editar um lançamento sem mudar forma de pagamento nem valor mantém a taxa original.
+- **DRE resumo (API):** saldo inicial do ano inclui o resultado dos anos anteriores.
+- Auditoria completa do cálculo (12.680 conferências, 0 divergências) em `docs/testes/AUDITORIA-DRE.md`.
+
+## 3.1.0 — outubro/2026
+
+### Notas fiscais (tela nova)
+- Anexar, visualizar (PDF dentro do sistema, XML formatado), substituir e remover **PDF e XML** de cada nota. Arquivos ficam em `storage/notas`, fora do acesso direto pelo navegador.
+- **Vincular** a nota a um lançamento ou conta a pagar/receber (lista ordenada por valor e data mais próximos; filtro "só em aberto").
+- **Leitura do XML** (NF-e, NFC-e, NFS-e ABRASF e padrão Nacional): preenche a nota e abre o **lançamento já preenchido** — valor, fornecedor/cliente (pelo CNPJ cadastrado), vencimento das duplicatas, forma de pagamento.
+- Entrada × saída deduzida pelo CNPJ da empresa (`EMPRESA_CNPJ` ou pelas notas já cadastradas).
+- **Importar XML e PDF em lote** (até 20 arquivos), juntando o PDF ao XML pela chave ou número, com opção de criar os lançamentos.
+- Chave de acesso duplicada é barrada; XML com DOCTYPE é recusado (segurança).
+- Lançamentos mostram a etiqueta **NF** e ganharam "Anexar nota fiscal" no menu. Apagar o lançamento mantém a nota (só tira o vínculo).
+- Nível de acesso novo "Notas fiscais" (níveis antigos herdam o acesso de Lançamentos).
+
+### Formas de pagamento
+- **Inativar / reativar** (some dos novos lançamentos, continua nos antigos e nos relatórios).
+- Tipo **Transferência**; formas que faltavam (cartão de débito e transferência) são criadas se ainda não existirem.
+
+### Login e segurança
+- **Esqueci minha senha** com link por e-mail (SMTP próprio, sem Composer; 1 hora, uso único, só o hash fica no banco; resposta não revela se o usuário existe).
+- **LGPD**: Termo de uso e consentimento + Política de privacidade (`/termos`, `/privacidade`); aceite obrigatório no primeiro acesso e quando a versão muda, com data e versão gravadas.
+- Logo da tela de entrada em versão clara, sem o fundo branco.
+
+### Correções (auditoria)
+- Log de exclusão agora guarda **cópia do que foi apagado** (inclusive ao desfazer importação) — botão "Ver apagado" nos Logs.
+- Conferidos no PHP e já corretos: lucro igual no Dashboard e no DRE, transferências no fluxo por caixa, taxa de cartão só em receita (taxas antigas que ficaram em despesas são zeradas na migração).
+
+### Testes
+- Importação de 1.000 linhas em 1,4 s, dashboard em 0,17 s (0,76 s em 4G), celular/tablet sem quebras, 100 usuários simultâneos sem erro. Relatório e prints em `docs/testes/`.
+- Tela de importação mostra o tempo de processamento.
+
 ## 3.0.0 — outubro/2026
 
 ### Arquitetura

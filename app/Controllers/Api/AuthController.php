@@ -6,9 +6,12 @@ use App\Core\Controller;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\HttpException;
+use App\Core\Termos;
+use App\Models\PasswordReset;
 use App\Models\Perfil;
 use App\Models\RateLimit;
 use App\Models\User;
+use App\Services\Mailer;
 use App\Services\Upload;
 
 /** Login, primeiro acesso, troca de senha, perfil próprio. */
@@ -32,15 +35,20 @@ class AuthController extends Controller
         User::validarUsername($username);
         if ($err = senha_fraca($senha)) throw new HttpException(400, $err);
         if ($senha !== (string) $this->input('confirmacao', $senha)) throw new HttpException(400, 'As senhas não conferem');
+        if (!$this->input('aceite_termos')) throw new HttpException(400, 'Para continuar, aceite o Termo de uso e a Política de privacidade');
+        $email = str_or_null($this->input('email'));
+        if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new HttpException(400, 'E-mail inválido');
         $perfilAdmin = (int) Database::value('SELECT id FROM perfis WHERE is_admin=1 ORDER BY sistema DESC, id LIMIT 1');
         $id = User::create([
             'username' => $username, 'nome' => cut(str_or_null($this->input('nome')), 150), 'password' => password_hash($senha, PASSWORD_BCRYPT),
             'role' => 'admin', 'perfil_id' => $perfilAdmin ?: null, 'senha_alterada_em' => date('Y-m-d H:i:s'),
+            'email' => cut($email, 150), 'termos_versao' => Termos::VERSAO, 'termos_aceitos_em' => date('Y-m-d H:i:s'),
         ]);
         $u = User::find($id);
         User::registrarLogin($id, client_ip());
         Auth::login($u, false);
         $this->log('setup_admin', 'auth', $id, "Primeiro administrador criado: $username");
+        $this->log('aceite_termos', 'auth', $id, 'Termo de uso e Política de privacidade v' . Termos::VERSAO);
         return Auth::out() + ['csrf' => Csrf::token()];
     }
 
@@ -115,6 +123,111 @@ class AuthController extends Controller
         Auth::reassinar();
         $this->log('update', 'users', $u['id'], 'Trocou a própria senha');
         return Auth::out(User::comPerfil((int) $u['id'])) + ['csrf' => Csrf::token()];
+    }
+
+    // ─── LGPD: aceite do Termo de uso e da Política de privacidade ─────────
+    public function aceitarTermos(): array
+    {
+        $u = Auth::require();
+        if (!$this->input('aceite')) throw new HttpException(400, 'Marque que você leu e concorda para continuar');
+        User::update((int) $u['id'], ['termos_versao' => Termos::VERSAO, 'termos_aceitos_em' => date('Y-m-d H:i:s')]);
+        $this->log('aceite_termos', 'auth', $u['id'], 'Termo de uso e Política de privacidade v' . Termos::VERSAO);
+        return Auth::out(User::comPerfil((int) $u['id'])) + ['csrf' => Csrf::token()];
+    }
+
+    // ─── Esqueci minha senha ────────────────────────────────────────────────
+    /**
+     * Recebe usuário OU e-mail e manda o link por e-mail. A resposta é sempre a mesma
+     * (não revela se o usuário existe nem se tem e-mail cadastrado).
+     */
+    public function esqueciSenha(): array
+    {
+        RateLimit::verificar('esqueci', 5, 900);
+        $login = trim((string) $this->input('login', ''));
+        $resposta = ['ok' => true, 'mensagem' => 'Se esse usuário ou e-mail estiver cadastrado, enviamos um link para criar uma nova senha. Ele vale por ' . PasswordReset::VALIDADE_MIN . ' minutos. Confira também a caixa de spam.'];
+        if ($login === '' || mb_strlen($login) > 150) throw new HttpException(400, 'Informe seu usuário ou e-mail');
+
+        $usuarios = strpos($login, '@') !== false
+            ? Database::all('SELECT id, username, nome, email, ativo FROM users WHERE email=? AND ativo=1 LIMIT 5', [$login])
+            : Database::all('SELECT id, username, nome, email, ativo FROM users WHERE username=? AND ativo=1', [$login]);
+        $base = self::urlBase();
+        foreach ($usuarios as $u) {
+            if (!$u['email'] || !filter_var($u['email'], FILTER_VALIDATE_EMAIL)) {
+                $this->log('senha_esqueci', 'auth', $u['id'], 'Pediu nova senha, mas não tem e-mail cadastrado', $u['username']);
+                continue;
+            }
+            if (PasswordReset::recente((int) $u['id'])) continue;
+            if (!$base) {
+                error_log('[ESQUECI] APP_URL não configurado no .env — e-mail de nova senha não enviado (obrigatório em produção).');
+                continue;
+            }
+            $token = PasswordReset::criar((int) $u['id'], client_ip());
+            $link = $base . 'login?redefinir=' . $token;
+            $ok = Mailer::enviar($u['email'], 'Criar nova senha — OAF Controle Financeiro', self::emailHtml($u, $link), self::emailTexto($u, $link));
+            $this->log('senha_esqueci', 'auth', $u['id'], $ok ? 'Link de nova senha enviado para ' . self::mascararEmail($u['email']) : 'FALHA ao enviar o e-mail de nova senha (veja o log do PHP)', $u['username']);
+        }
+        if (!$usuarios) $this->log('senha_esqueci', 'auth', null, 'Pedido para usuário/e-mail não cadastrado', mb_substr($login, 0, 100));
+        return $resposta;
+    }
+
+    /** Cria a nova senha a partir do link do e-mail. */
+    public function redefinirSenha(): array
+    {
+        RateLimit::verificar('redefinir', 10, 900);
+        $token = (string) $this->input('token', '');
+        $nova = (string) $this->input('nova', '');
+        $r = PasswordReset::valido($token);
+        if (!$r) throw new HttpException(400, 'Esse link não vale mais (expirou ou já foi usado). Peça um novo em "Esqueci minha senha".', 'LINK_INVALIDO');
+        if ($err = senha_fraca($nova)) throw new HttpException(400, $err);
+        if ($nova !== (string) $this->input('confirmacao', '')) throw new HttpException(400, 'A confirmação não confere com a nova senha');
+        User::definirSenha((int) $r['id'], $nova, false);
+        PasswordReset::usar((int) $r['reset_id'], (int) $r['id']);
+        $this->log('senha_redefinida', 'auth', $r['id'], 'Nova senha criada pelo link do e-mail', $r['username']);
+        return ['ok' => true, 'username' => $r['username']];
+    }
+
+    /** Endereço do sistema pros links do e-mail. Em produção tem que vir do .env (APP_URL) — o Host do pedido pode ser forjado. */
+    private static function urlBase(): ?string
+    {
+        $app = trim((string) env('APP_URL', ''));
+        if ($app !== '') return rtrim($app, '/') . '/';
+        if (IS_PROD) return null;
+        $host = preg_replace('/[^a-z0-9.\-:\[\]]/i', '', (string) ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+        return (\App\Core\Session::https() ? 'https://' : 'http://') . $host . base_path();
+    }
+
+    private static function mascararEmail(string $e): string
+    {
+        [$a, $d] = array_pad(explode('@', $e, 2), 2, '');
+        return mb_substr($a, 0, 2) . str_repeat('•', max(1, mb_strlen($a) - 2)) . '@' . $d;
+    }
+
+    private static function emailTexto(array $u, string $link): string
+    {
+        $nome = $u['nome'] ?: $u['username'];
+        return "Olá, $nome!\n\nRecebemos um pedido para criar uma nova senha no OAF Controle Financeiro (usuário: {$u['username']}).\n\n"
+             . "Abra o link abaixo para criar a nova senha. Ele vale por " . PasswordReset::VALIDADE_MIN . " minutos e só pode ser usado uma vez:\n$link\n\n"
+             . "Se não foi você, ignore este e-mail — sua senha atual continua valendo.\n";
+    }
+
+    private static function emailHtml(array $u, string $link): string
+    {
+        $nome = e($u['nome'] ?: $u['username']);
+        $l = e($link);
+        $min = PasswordReset::VALIDADE_MIN;
+        return <<<HTML
+<!doctype html><html lang="pt-BR"><body style="margin:0;background:#F2F3F7;font-family:Arial,Helvetica,sans-serif;color:#3C3F5C">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F2F3F7;padding:32px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden">
+<tr><td style="background:#282A5C;padding:22px 28px;color:#ffffff;font-size:18px;font-weight:bold">OAF <span style="color:#C9A55F">Controle Financeiro</span></td></tr>
+<tr><td style="padding:28px">
+<p style="font-size:16px;margin:0 0 14px">Olá, <b>{$nome}</b>!</p>
+<p style="font-size:15px;line-height:1.5;margin:0 0 22px">Recebemos um pedido para criar uma nova senha para o usuário <b>{$u['username']}</b>. Clique no botão abaixo — o link vale por <b>{$min} minutos</b> e só pode ser usado uma vez.</p>
+<p style="margin:0 0 24px"><a href="{$l}" style="display:inline-block;background:#282A5C;color:#ffffff;text-decoration:none;font-weight:bold;padding:13px 22px;border-radius:10px">Criar nova senha</a></p>
+<p style="font-size:13px;color:#7A7E98;line-height:1.5;margin:0 0 8px">Se o botão não abrir, copie este endereço no navegador:<br><span style="word-break:break-all;color:#34376F">{$l}</span></p>
+<p style="font-size:13px;color:#7A7E98;line-height:1.5;margin:16px 0 0">Não foi você? Ignore este e-mail — sua senha atual continua valendo.</p>
+</td></tr></table></td></tr></table></body></html>
+HTML;
     }
 
     /** Edita o PRÓPRIO perfil (nome, e-mail, foto). POST porque o PHP não lê multipart em PUT. */

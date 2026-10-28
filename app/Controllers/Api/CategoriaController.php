@@ -50,7 +50,7 @@ class CategoriaController extends Controller
         $uso = (int) Database::value('SELECT COUNT(*) FROM transactions WHERE categoria_id=?', [$id]);
         if ($uso) throw new HttpException(400, "Categoria usada em $uso lançamento(s). Desative em vez de excluir, pra não perder o histórico.");
         Categoria::delete($id);
-        $this->log('delete', 'categorias', $id, $row['nome']);
+        $this->log('delete', 'categorias', $id, $row['nome'], null, $row);
         return ['ok' => true];
     }
 }

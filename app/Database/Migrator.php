@@ -14,7 +14,7 @@ use App\Core\Permissions;
  */
 final class Migrator
 {
-    public const VERSAO = 7;
+    public const VERSAO = 8;
 
     public static function tabelas(): array
     {
@@ -48,6 +48,8 @@ final class Migrator
                 foto_path         VARCHAR(255) NULL,
                 foto_nome         VARCHAR(255) NULL,
                 permissoes        TEXT NULL,
+                termos_versao     VARCHAR(20) NULL,
+                termos_aceitos_em DATETIME NULL,
                 created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_users_perfil (perfil_id)
             ) $e",
@@ -115,7 +117,7 @@ final class Migrator
             'formas_pagamento' => "CREATE TABLE IF NOT EXISTS formas_pagamento (
                 id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL, tipo VARCHAR(20) NULL, banco VARCHAR(100) NULL, agencia VARCHAR(30) NULL,
                 parcelas INT DEFAULT 1, dias_recebimento INT DEFAULT 0, taxa_intermediacao DECIMAL(8,4) DEFAULT 0,
-                taxa_parcelamento DECIMAL(8,4) DEFAULT 0, tarifa_fixa DECIMAL(10,2) DEFAULT 0
+                taxa_parcelamento DECIMAL(8,4) DEFAULT 0, tarifa_fixa DECIMAL(10,2) DEFAULT 0, ativo TINYINT(1) NOT NULL DEFAULT 1
             ) $e",
             'contas_receita' => "CREATE TABLE IF NOT EXISTS contas_receita (
                 id INT AUTO_INCREMENT PRIMARY KEY, grupo VARCHAR(150) NOT NULL, conta VARCHAR(150)
@@ -173,6 +175,47 @@ final class Migrator
                 INDEX idx_doc_tipo (tipo),
                 INDEX idx_doc_parceiro (parceiro_id)
             ) $e",
+            // Notas fiscais (PDF e/ou XML) — arquivos ficam em storage/notas (fora do acesso direto pelo navegador).
+            // tipo: entrada = compra/serviço tomado (vira despesa) · saida = venda/serviço prestado (vira receita).
+            'notas_fiscais' => "CREATE TABLE IF NOT EXISTS notas_fiscais (
+                id                INT AUTO_INCREMENT PRIMARY KEY,
+                tipo              ENUM('entrada','saida') NOT NULL DEFAULT 'entrada',
+                modelo            VARCHAR(10) NULL,
+                numero            VARCHAR(20) NULL,
+                serie             VARCHAR(10) NULL,
+                chave             VARCHAR(60) NULL,
+                data_emissao      DATE NULL,
+                valor             DECIMAL(15,2) NOT NULL DEFAULT 0,
+                emitente_nome     VARCHAR(255) NULL,
+                emitente_doc      VARCHAR(20) NULL,
+                destinatario_nome VARCHAR(255) NULL,
+                destinatario_doc  VARCHAR(20) NULL,
+                descricao         VARCHAR(255) NULL,
+                observacoes       TEXT NULL,
+                pdf_path          VARCHAR(255) NULL,
+                pdf_nome          VARCHAR(255) NULL,
+                xml_path          VARCHAR(255) NULL,
+                xml_nome          VARCHAR(255) NULL,
+                transaction_id    INT NULL,
+                user_id           INT NULL,
+                created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at        DATETIME NULL,
+                INDEX idx_nf_tx (transaction_id),
+                INDEX idx_nf_chave (chave),
+                INDEX idx_nf_emissao (data_emissao)
+            ) $e",
+            // Links de "Esqueci minha senha": só o hash do token fica no banco; vale 1 hora e uma vez.
+            'password_resets' => "CREATE TABLE IF NOT EXISTS password_resets (
+                id         INT AUTO_INCREMENT PRIMARY KEY,
+                user_id    INT NOT NULL,
+                token_hash CHAR(64) NOT NULL,
+                expira_em  DATETIME NOT NULL,
+                usado_em   DATETIME NULL,
+                ip         VARCHAR(64) NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_reset_token (token_hash),
+                INDEX idx_reset_user (user_id)
+            ) $e",
             // Histórico de importações de planilha (permite desfazer).
             'importacoes' => "CREATE TABLE IF NOT EXISTS importacoes (
                 id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -190,6 +233,7 @@ final class Migrator
             'logs' => "CREATE TABLE IF NOT EXISTS logs (
                 id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NULL, username VARCHAR(100), action VARCHAR(40) NOT NULL,
                 entity VARCHAR(40) NOT NULL, entity_id INT NULL, details VARCHAR(500), ip VARCHAR(64),
+                dados MEDIUMTEXT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_logs_created (created_at), INDEX idx_logs_user (user_id), INDEX idx_logs_action (action)
             ) $e",
@@ -209,8 +253,11 @@ final class Migrator
                                    'tentativas_falhas' => 'INT NOT NULL DEFAULT 0 AFTER deve_trocar_senha',
                                    'bloqueado_ate' => 'DATETIME NULL AFTER tentativas_falhas', 'ultimo_login' => 'DATETIME NULL AFTER bloqueado_ate',
                                    'ultimo_ip' => 'VARCHAR(64) NULL AFTER ultimo_login', 'senha_alterada_em' => 'DATETIME NULL AFTER ultimo_ip',
-                                   'foto_path' => 'VARCHAR(255) NULL', 'foto_nome' => 'VARCHAR(255) NULL', 'permissoes' => 'TEXT NULL'],
-            'formas_pagamento' => ['banco' => 'VARCHAR(100) NULL', 'agencia' => 'VARCHAR(30) NULL', 'tipo' => 'VARCHAR(20) NULL AFTER nome'],
+                                   'foto_path' => 'VARCHAR(255) NULL', 'foto_nome' => 'VARCHAR(255) NULL', 'permissoes' => 'TEXT NULL',
+                                   'termos_versao' => 'VARCHAR(20) NULL', 'termos_aceitos_em' => 'DATETIME NULL'],
+            'formas_pagamento' => ['banco' => 'VARCHAR(100) NULL', 'agencia' => 'VARCHAR(30) NULL', 'tipo' => 'VARCHAR(20) NULL AFTER nome',
+                                   'ativo' => 'TINYINT(1) NOT NULL DEFAULT 1'],
+            'logs'             => ['dados' => 'MEDIUMTEXT NULL AFTER ip'],
             'clientes'         => ['razao_social' => 'VARCHAR(255) NULL AFTER nome', 'importacao_id' => 'INT NULL'],
             'caixas'           => ['tipo' => "VARCHAR(20) NOT NULL DEFAULT 'banco' AFTER nome", 'banco' => 'VARCHAR(100) NULL AFTER tipo',
                                    'agencia' => 'VARCHAR(30) NULL AFTER banco', 'conta' => 'VARCHAR(30) NULL AFTER agencia', 'observacoes' => 'VARCHAR(255) NULL'],
@@ -248,7 +295,27 @@ final class Migrator
             WHEN UPPER(nome) LIKE '%DINHEIRO%' THEN 'dinheiro'
             WHEN UPPER(nome) LIKE '%DÉBITO%' OR UPPER(nome) LIKE '%DEBITO%' THEN 'debito'
             WHEN UPPER(nome) LIKE '%CRÉDITO%' OR UPPER(nome) LIKE '%CREDITO%' THEN 'credito'
+            WHEN UPPER(nome) LIKE '%TRANSF%' OR UPPER(nome) LIKE '%TED%' OR UPPER(nome) LIKE '%DOC %' THEN 'transferencia'
             ELSE NULL END WHERE tipo IS NULL OR tipo = ''");
+
+        // v8: formas que faltavam (cartão de débito e transferência) — só cria se ainda não houver uma desse tipo.
+        $faltam = ['debito' => ['CARTÃO DÉBITO', 1], 'transferencia' => ['TRANSFERÊNCIA BANCÁRIA (TED/DOC)', 0]];
+        foreach ($faltam as $tipo => [$nome, $dias]) {
+            if ((int) Database::value('SELECT COUNT(*) FROM formas_pagamento WHERE tipo=?', [$tipo])) continue;
+            if ((int) Database::value('SELECT COUNT(*) FROM formas_pagamento WHERE nome=?', [$nome])) continue;
+            Database::run('INSERT INTO formas_pagamento (nome, tipo, parcelas, dias_recebimento, taxa_intermediacao, taxa_parcelamento, tarifa_fixa, ativo) VALUES (?,?,1,?,0,0,0,1)', [$nome, $tipo, $dias]);
+        }
+
+        // v8: taxa de cartão só existe em receita (auditoria, item 5) — limpa sobras antigas em despesas.
+        Database::run("UPDATE transactions SET taxa_mdr=0, valor_liquido=valor WHERE tipo='expense' AND taxa_mdr<>0");
+
+        // v8: tela nova "Notas fiscais" — níveis antigos recebem o mesmo acesso que têm em Lançamentos.
+        foreach (Database::all('SELECT id, permissoes FROM perfis') as $p) {
+            $perm = json_decode((string) $p['permissoes'], true);
+            if (!is_array($perm) || array_key_exists('notas-fiscais', $perm)) continue;
+            $perm['notas-fiscais'] = (int) ($perm['lancamentos'] ?? 0);
+            Database::run('UPDATE perfis SET permissoes=? WHERE id=?', [json_encode(Permissions::normalizar($perm)), $p['id']]);
+        }
 
         // v7: usuários antigos (role admin/user) ganham o nível de acesso equivalente.
         $admin = (int) Database::value("SELECT id FROM perfis WHERE is_admin=1 ORDER BY sistema DESC, id LIMIT 1");
@@ -264,12 +331,12 @@ final class Migrator
         return [
             ['Administrador', 'Acesso total, inclusive usuários e níveis de acesso.', 1, 1, $P(Permissions::todas())],
             ['Usuário', 'Dia a dia: lançamentos e cadastros de clientes, fornecedores e parceiros.', 0, 0, $P([
-                'dashboard' => 1, 'calendario' => 1, 'lancamentos' => 2, 'fluxo-caixa' => 1,
+                'dashboard' => 1, 'calendario' => 1, 'lancamentos' => 2, 'notas-fiscais' => 2, 'fluxo-caixa' => 1,
                 'cad-clientes' => 2, 'cad-fornecedores' => 2, 'cad-parceiros' => 2, 'logs' => 1,
             ])],
             ['Financeiro', 'Todas as telas financeiras e cadastros, sem gerenciar usuários.', 0, 0, $P(Permissions::todas())],
             ['Consulta', 'Só visualiza: não cria, não altera e não apaga nada.', 0, 0, $P([
-                'dashboard' => 1, 'dre' => 1, 'calendario' => 1, 'lancamentos' => 1, 'fluxo-caixa' => 1, 'importacao' => 1,
+                'dashboard' => 1, 'dre' => 1, 'calendario' => 1, 'lancamentos' => 1, 'notas-fiscais' => 1, 'fluxo-caixa' => 1, 'importacao' => 1,
                 'cad-clientes' => 1, 'cad-fornecedores' => 1, 'cad-parceiros' => 1, 'cad-categorias' => 1,
             ])],
         ];
@@ -291,7 +358,7 @@ final class Migrator
         if (!$count('formas_pagamento')) {
             Database::run("INSERT INTO formas_pagamento (nome,tipo,parcelas,dias_recebimento,taxa_intermediacao,taxa_parcelamento,tarifa_fixa) VALUES
                 ('CARTÃO CRÉDITO','credito',1,30,0,1.9,0),('CARTÃO DÉBITO','debito',1,1,0,0,0),('BOLETO BANCÁRIO','boleto',1,1,0,0,0),('DINHEIRO','dinheiro',1,0,0,0,0),
-                ('PIX','pix',1,0,0,0,0)");
+                ('PIX','pix',1,0,0,0,0),('TRANSFERÊNCIA BANCÁRIA (TED/DOC)','transferencia',1,0,0,0,0)");
         }
         if (!$count('contas_receita')) {
             Database::run("INSERT INTO contas_receita (grupo, conta) VALUES ('PIX','Itaú'),('Cartão de débito','Itaú'),

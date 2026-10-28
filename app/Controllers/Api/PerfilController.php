@@ -60,7 +60,7 @@ class PerfilController extends Controller
             Database::run('UPDATE users SET perfil_id=?, role=? WHERE perfil_id=?', [$destino, (int) $d['is_admin'] ? 'admin' : 'user', $id]);
         }
         Perfil::delete($id);
-        $this->log('delete', 'perfis', $id, $p['nome'] . ($qtd ? " — $qtd usuário(s) movidos" : ''));
+        $this->log('delete', 'perfis', $id, $p['nome'] . ($qtd ? " — $qtd usuário(s) movidos" : ''), null, $p);
         return ['ok' => true];
     }
 }

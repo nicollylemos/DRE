@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS users (
   foto_path         VARCHAR(255) NULL,
   foto_nome         VARCHAR(255) NULL,
   permissoes        TEXT NULL,
+  termos_versao     VARCHAR(20) NULL,
+  termos_aceitos_em DATETIME NULL,
   created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_users_perfil (perfil_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -105,7 +107,7 @@ CREATE TABLE IF NOT EXISTS caixas (
 CREATE TABLE IF NOT EXISTS formas_pagamento (
   id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL, tipo VARCHAR(20) NULL, banco VARCHAR(100) NULL, agencia VARCHAR(30) NULL,
   parcelas INT DEFAULT 1, dias_recebimento INT DEFAULT 0, taxa_intermediacao DECIMAL(8,4) DEFAULT 0,
-  taxa_parcelamento DECIMAL(8,4) DEFAULT 0, tarifa_fixa DECIMAL(10,2) DEFAULT 0
+  taxa_parcelamento DECIMAL(8,4) DEFAULT 0, tarifa_fixa DECIMAL(10,2) DEFAULT 0, ativo TINYINT(1) NOT NULL DEFAULT 1
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS contas_receita (
@@ -169,6 +171,46 @@ CREATE TABLE IF NOT EXISTS documentos (
   INDEX idx_doc_parceiro (parceiro_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS notas_fiscais (
+  id                INT AUTO_INCREMENT PRIMARY KEY,
+  tipo              ENUM('entrada','saida') NOT NULL DEFAULT 'entrada',
+  modelo            VARCHAR(10) NULL,
+  numero            VARCHAR(20) NULL,
+  serie             VARCHAR(10) NULL,
+  chave             VARCHAR(60) NULL,
+  data_emissao      DATE NULL,
+  valor             DECIMAL(15,2) NOT NULL DEFAULT 0,
+  emitente_nome     VARCHAR(255) NULL,
+  emitente_doc      VARCHAR(20) NULL,
+  destinatario_nome VARCHAR(255) NULL,
+  destinatario_doc  VARCHAR(20) NULL,
+  descricao         VARCHAR(255) NULL,
+  observacoes       TEXT NULL,
+  pdf_path          VARCHAR(255) NULL,
+  pdf_nome          VARCHAR(255) NULL,
+  xml_path          VARCHAR(255) NULL,
+  xml_nome          VARCHAR(255) NULL,
+  transaction_id    INT NULL,
+  user_id           INT NULL,
+  created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at        DATETIME NULL,
+  INDEX idx_nf_tx (transaction_id),
+  INDEX idx_nf_chave (chave),
+  INDEX idx_nf_emissao (data_emissao)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  user_id    INT NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  expira_em  DATETIME NOT NULL,
+  usado_em   DATETIME NULL,
+  ip         VARCHAR(64) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_reset_token (token_hash),
+  INDEX idx_reset_user (user_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS importacoes (
   id           INT AUTO_INCREMENT PRIMARY KEY,
   tipo         VARCHAR(30) NOT NULL,
@@ -186,6 +228,7 @@ CREATE TABLE IF NOT EXISTS importacoes (
 CREATE TABLE IF NOT EXISTS logs (
   id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NULL, username VARCHAR(100), action VARCHAR(40) NOT NULL,
   entity VARCHAR(40) NOT NULL, entity_id INT NULL, details VARCHAR(500), ip VARCHAR(64),
+  dados MEDIUMTEXT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_logs_created (created_at), INDEX idx_logs_user (user_id), INDEX idx_logs_action (action)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -195,7 +238,7 @@ CREATE TABLE IF NOT EXISTS rate_limits (
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Níveis de acesso padrão
-INSERT INTO perfis (nome, descricao, is_admin, sistema, permissoes) VALUES ('Administrador', 'Acesso total, inclusive usuários e níveis de acesso.', 1, 1, '{"dashboard":1,"dre":1,"calendario":1,"lancamentos":2,"fluxo-caixa":1,"importacao":2,"cad-clientes":2,"cad-fornecedores":2,"cad-parceiros":2,"cad-categorias":2,"cad-caixas":2,"cad-formas":2,"logs":1}');
-INSERT INTO perfis (nome, descricao, is_admin, sistema, permissoes) VALUES ('Usuário', 'Dia a dia: lançamentos e cadastros de clientes, fornecedores e parceiros.', 0, 0, '{"dashboard":1,"dre":0,"calendario":1,"lancamentos":2,"fluxo-caixa":1,"importacao":0,"cad-clientes":2,"cad-fornecedores":2,"cad-parceiros":2,"cad-categorias":0,"cad-caixas":0,"cad-formas":0,"logs":1}');
-INSERT INTO perfis (nome, descricao, is_admin, sistema, permissoes) VALUES ('Financeiro', 'Todas as telas financeiras e cadastros, sem gerenciar usuários.', 0, 0, '{"dashboard":1,"dre":1,"calendario":1,"lancamentos":2,"fluxo-caixa":1,"importacao":2,"cad-clientes":2,"cad-fornecedores":2,"cad-parceiros":2,"cad-categorias":2,"cad-caixas":2,"cad-formas":2,"logs":1}');
-INSERT INTO perfis (nome, descricao, is_admin, sistema, permissoes) VALUES ('Consulta', 'Só visualiza: não cria, não altera e não apaga nada.', 0, 0, '{"dashboard":1,"dre":1,"calendario":1,"lancamentos":1,"fluxo-caixa":1,"importacao":1,"cad-clientes":1,"cad-fornecedores":1,"cad-parceiros":1,"cad-categorias":1,"cad-caixas":0,"cad-formas":0,"logs":0}');
+INSERT INTO perfis (nome, descricao, is_admin, sistema, permissoes) VALUES ('Administrador', 'Acesso total, inclusive usuários e níveis de acesso.', 1, 1, '{"dashboard":1,"dre":1,"calendario":1,"lancamentos":2,"notas-fiscais":2,"fluxo-caixa":1,"importacao":2,"cad-clientes":2,"cad-fornecedores":2,"cad-parceiros":2,"cad-categorias":2,"cad-caixas":2,"cad-formas":2,"logs":1}');
+INSERT INTO perfis (nome, descricao, is_admin, sistema, permissoes) VALUES ('Usuário', 'Dia a dia: lançamentos e cadastros de clientes, fornecedores e parceiros.', 0, 0, '{"dashboard":1,"dre":0,"calendario":1,"lancamentos":2,"notas-fiscais":2,"fluxo-caixa":1,"importacao":0,"cad-clientes":2,"cad-fornecedores":2,"cad-parceiros":2,"cad-categorias":0,"cad-caixas":0,"cad-formas":0,"logs":1}');
+INSERT INTO perfis (nome, descricao, is_admin, sistema, permissoes) VALUES ('Financeiro', 'Todas as telas financeiras e cadastros, sem gerenciar usuários.', 0, 0, '{"dashboard":1,"dre":1,"calendario":1,"lancamentos":2,"notas-fiscais":2,"fluxo-caixa":1,"importacao":2,"cad-clientes":2,"cad-fornecedores":2,"cad-parceiros":2,"cad-categorias":2,"cad-caixas":2,"cad-formas":2,"logs":1}');
+INSERT INTO perfis (nome, descricao, is_admin, sistema, permissoes) VALUES ('Consulta', 'Só visualiza: não cria, não altera e não apaga nada.', 0, 0, '{"dashboard":1,"dre":1,"calendario":1,"lancamentos":1,"notas-fiscais":1,"fluxo-caixa":1,"importacao":1,"cad-clientes":1,"cad-fornecedores":1,"cad-parceiros":1,"cad-categorias":1,"cad-caixas":0,"cad-formas":0,"logs":0}');

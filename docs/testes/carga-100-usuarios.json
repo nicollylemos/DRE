@@ -1,0 +1,59 @@
+{
+ "data": "2026-10-28",
+ "servidor": "nginx + PHP-FPM 8.3 (20 processos) + MariaDB 10.11 · 2 vCPU · 8 GB RAM (equivalente a uma VPS pequena)",
+ "base": "13.000 lançamentos, 400 notas, 100 usuários",
+ "resultados": [
+  {
+   "cenario": "Uso normal: 100 pessoas navegando ao mesmo tempo (pausa de 2–5 s entre cliques)",
+   "usuarios_simultaneos": 100,
+   "duracao_s": 97.9,
+   "requisicoes": 2557,
+   "req_por_s": 26.1,
+   "erros": 0,
+   "exemplos_erro": [],
+   "login_ms": {
+    "mediana": 1789,
+    "p95": 3534
+   },
+   "pagina_ms": {
+    "mediana": 4,
+    "p95": 12,
+    "p99": 2656,
+    "max": 3024
+   },
+   "api_ms": {
+    "mediana": 19,
+    "p95": 85,
+    "p99": 2523,
+    "max": 3086
+   },
+   "geral_p95_ms": 83
+  },
+  {
+   "cenario": "Estresse: 100 pessoas clicando sem parar (sem pausa)",
+   "usuarios_simultaneos": 100,
+   "duracao_s": 48.7,
+   "requisicoes": 7351,
+   "req_por_s": 151.1,
+   "erros": 0,
+   "exemplos_erro": [],
+   "login_ms": {
+    "mediana": 1898,
+    "p95": 3440
+   },
+   "pagina_ms": {
+    "mediana": 488,
+    "p95": 696,
+    "p99": 849,
+    "max": 2804
+   },
+   "api_ms": {
+    "mediana": 629,
+    "p95": 1248,
+    "p99": 1594,
+    "max": 2839
+   },
+   "geral_p95_ms": 1158
+  }
+ ]
+}

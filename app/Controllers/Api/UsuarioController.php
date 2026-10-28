@@ -128,7 +128,7 @@ class UsuarioController extends Controller
         if ((int) $u['is_admin'] && !User::adminsRestantes($id)) throw new HttpException(400, 'O sistema precisa de pelo menos um administrador ativo');
         User::delete($id);
         Upload::apagar($u['foto_path']);
-        $this->log('delete', 'users', $id, "{$u['username']} ({$u['perfil_nome']})");
+        $this->log('delete', 'users', $id, "{$u['username']} ({$u['perfil_nome']})", null, array_diff_key($u, array_flip(['perfil_permissoes', 'perfil_admin'])));
         return ['ok' => true];
     }
 }

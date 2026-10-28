@@ -7,7 +7,7 @@ AddDefaultCharset UTF-8
   RewriteEngine On
 
   # Bloqueia acesso direto a código, configuração e arquivos internos
-  RewriteRule ^(app|storage)(/|$) - [F,L]
+  RewriteRule ^(app|storage|docs)(/|$) - [F,L]
   RewriteRule (^|/)\.(env|git|htaccess) - [F,L]
   RewriteRule \.(sql|md|lock|log)$ - [F,L]
   RewriteRule ^router\.php$ - [F,L]

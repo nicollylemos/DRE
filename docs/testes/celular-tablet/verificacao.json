@@ -1,0 +1,230 @@
+[
+ {
+  "aparelho": "celular",
+  "tela": "login",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "tela": "dashboard",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "tela": "lancamentos",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "tela": "notas-fiscais",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "tela": "dre",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "tela": "fluxo-caixa",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "tela": "calendario",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "tela": "formas",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "tela": "importacao",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "tela": "nova nota (modal)",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "tela": "novo lançamento (modal)",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "tela": "privacidade",
+  "largura": 390,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "celular",
+  "erros_js": []
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "login",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "dashboard",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "lancamentos",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "notas-fiscais",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "dre",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "fluxo-caixa",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "calendario",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "formas",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "importacao",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "nova nota (modal)",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "novo lançamento (modal)",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "tela": "privacidade",
+  "largura": 810,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet",
+  "erros_js": []
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "login",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "dashboard",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "lancamentos",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "notas-fiscais",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "dre",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "fluxo-caixa",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "calendario",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "formas",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "importacao",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "nova nota (modal)",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "novo lançamento (modal)",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "tela": "privacidade",
+  "largura": 1080,
+  "sobra_horizontal_px": 0
+ },
+ {
+  "aparelho": "tablet-deitado",
+  "erros_js": []
+ }
+]

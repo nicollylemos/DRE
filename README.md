@@ -2,7 +2,7 @@
 
 Sistema de controle financeiro com DRE, fluxo de caixa, calendário de contas, cadastros, importação de planilhas e controle de acesso por usuário.
 
-**Versão 3.0.0 (out/2026)** — aparece na tela de login (constante `APP_VERSION` em `app/bootstrap.php`).
+**Versão 3.1.1 (out/2026)** — aparece na tela de login (constante `APP_VERSION` em `app/bootstrap.php`).
 
 PHP puro, **sem Composer e sem `npm install`**: Excel, PDF e leitura de planilhas são feitos em PHP.
 
@@ -88,7 +88,7 @@ Quer criar as tabelas antes de abrir o site? `php app/Database/Migrator.php --mi
 ```nginx
 root /var/www/dre;
 index index.php;
-location ~ ^/(app|storage)/ { deny all; }
+location ~ ^/(app|storage|docs)/ { deny all; }
 location ~ /\.(env|git|ht) { deny all; }
 location ~ \.(sql|md|lock|log)$ { deny all; }
 location = /router.php { deny all; }
@@ -96,8 +96,28 @@ location ~* ^/uploads/.*\.(php\d?|phtml|phar|html?|svg|js)$ { deny all; }
 location / { try_files $uri /index.php$is_args$args; }
 location = /index.php { include fastcgi_params; fastcgi_param SCRIPT_FILENAME $document_root/index.php; fastcgi_pass unix:/run/php/php8.3-fpm.sock; }
 location ~ \.php$ { deny all; }
-client_max_body_size 22M;
+client_max_body_size 25M;
 ```
+
+Configuração completa (a mesma usada nos testes de carga) em `docs/nginx.conf.exemplo`.
+
+---
+
+## 🧪 Dados fictícios para testar
+
+Gera uma clínica fictícia de jan/2025 a dez/2026: ~2.000 lançamentos (consultas, procedimentos, convênios, aluguel, folha, impostos, materiais…), transferências, 4 contas, clientes e fornecedores com CPF/CNPJ válidos e ~45 notas fiscais com XML e PDF. Tem contas atrasadas de propósito, meses futuros em aberto, um mês com prejuízo e crescimento de 2026 sobre 2025.
+
+```bash
+php app/Database/DadosFicticios.php            # gera (só se o banco não tiver lançamentos)
+php app/Database/DadosFicticios.php --limpar   # apaga lançamentos, notas, clientes e fornecedores e gera de novo
+```
+
+No XAMPP: **XAMPP Control Panel → Shell** → `cd htdocs\DRE-php` → `php app\Database\DadosFicticios.php`.
+Usuários de teste: **financeiro / Demo1234** e **consulta / Demo1234** (este vê o aceite LGPD). Se o banco não tinha ninguém, cria também **admin / Admin1234**.
+
+> Use um banco separado pra testar (troque `DB_NAME` no `.env`, ex.: `dre_teste`) — o `--limpar` apaga os dados de movimento.
+
+A auditoria do cálculo (12.680 conferências) está em `docs/testes/AUDITORIA-DRE.md`, com o script pra rodar de novo.
 
 ---
 
@@ -105,10 +125,15 @@ client_max_body_size 22M;
 
 - Com o banco vazio, a tela de login mostra **"Primeiro acesso"**: crie o administrador (senha com **8+ caracteres, letras e números**).
 - Depois disso o cadastro público some. Novos usuários são criados em **Usuários e acessos**.
-- Esqueceu a senha? Outro administrador redefine em **Usuários e acessos → ⋮ → Redefinir senha**.
+- Esqueceu a senha? Clique em **Esqueci minha senha** na tela de entrada: chega um link por e-mail (vale 1 hora). Precisa ter e-mail no cadastro e `APP_URL` + `MAIL_*` configurados no `.env`. Sem e-mail, outro administrador redefine em **Usuários e acessos → ⋮ → Redefinir senha**.
+- No primeiro acesso de cada pessoa aparece o **Termo de uso e a Política de privacidade (LGPD)** para aceitar. Preencha `LGPD_CONTROLADOR`, `LGPD_CNPJ` e `LGPD_EMAIL` no `.env`.
 - Se perder o único admin: rode no banco `UPDATE users SET tentativas_falhas=0, bloqueado_ate=NULL WHERE username='seu_usuario';` (desbloqueio) ou apague todos os usuários (`DELETE FROM users;`) para voltar ao "Primeiro acesso".
 
 ---
+
+## 🔁 Atualizando da 3.0 para a 3.1
+
+Substitua os arquivos mantendo `.env`, `uploads/` e `storage/`, e abra o site — o banco atualiza sozinho (tabela de notas fiscais, links de senha, colunas novas). Depois acrescente no `.env` as linhas novas do `.env.example` (`APP_URL`, `MAIL_*`, `LGPD_*`, `EMPRESA_CNPJ`). Todo mundo vai aceitar o termo LGPD no próximo login. Relatório dos testes em `docs/testes/RELATORIO-TESTES.md`.
 
 ## 🔁 Atualizando da versão 2.x
 
@@ -128,13 +153,15 @@ client_max_body_size 22M;
 | **Dashboard** | KPIs do exercício, gráfico receitas × despesas por mês, comparação com o mesmo período do ano anterior, próximos vencimentos (7 dias), saldo por conta e despesas por categoria |
 | **DRE** | Demonstrativo mês a mês: receita bruta → deduções (MDR) → receita líquida → despesas → resultado, com **AV%**, **ano anterior** e **AH%**. Agrupa por categoria, grupo/conta ou centro de custo; regime de **competência** ou **caixa**. Exporta Excel e PDF |
 | **Calendário** | Contas a pagar e a receber por vencimento. Filtros (a receber / a pagar / vencidos / quitados), totais do mês, **dar baixa** com 1 clique, **nova conta** no dia (duplo clique no dia) |
-| **Lançamentos** | Receitas e despesas com filtros, KPIs, baixa/reabrir |
+| **Lançamentos** | Receitas e despesas com filtros, KPIs, baixa/reabrir. Etiqueta **NF** quando tem nota fiscal vinculada |
+| **Notas fiscais** | Anexa, visualiza, substitui e remove **PDF e XML**; vincula a lançamento ou conta a pagar/receber; lê o XML (NF-e, NFC-e e NFS-e ABRASF/Nacional) e **preenche o lançamento sozinho** (valor, fornecedor, vencimento das duplicatas, forma de pagamento); importa várias notas de uma vez (até 20 arquivos) |
 | **Fluxo de Caixa** | Dia a dia, realizado × previsto, por caixa |
 | **Importar / Exportar** | Assistente de importação + Excel, CSV, XML e PDF + histórico com "desfazer" |
 | **Clientes, Fornecedores, Parceiros** | Cadastros com CPF/CNPJ validado, busca na Receita (BrasilAPI), contratos e aditivos |
-| **Categorias, Caixas/Banco, Formas de pagamento** | Cadastros de apoio (cor da categoria, saldo atual das contas, taxas MDR) |
+| **Categorias, Caixas/Banco, Formas de pagamento** | Cadastros de apoio (cor da categoria, saldo atual das contas, taxas MDR). Formas de pagamento podem ser **inativadas/reativadas** |
 | **Usuários e acessos** | Usuários + níveis de acesso (só administrador) |
-| **Logs** | Tudo que foi criado, alterado, apagado, importado, logins (inclusive falhos) |
+| **Logs** | Tudo que foi criado, alterado, apagado, importado, logins (inclusive falhos). Nas exclusões guarda **cópia do que foi apagado** ("Ver apagado") |
+| **/termos e /privacidade** | Termo de uso e Política de privacidade (LGPD), abrem sem login |
 
 O menu lateral pode ser **recolhido** (botão `‹` no topo) — o sistema lembra a escolha.
 
