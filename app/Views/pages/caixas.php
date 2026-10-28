@@ -32,8 +32,8 @@
       <label class="field"><span>Nome *</span><input type="text" id="cx-nome" maxlength="100" placeholder="Ex: Itaú PJ, Caixa da recepção"/></label>
       <div class="grid" id="cx-banco-wrap">
         <label class="field span2"><span>Banco</span><input type="text" id="cx-banco" maxlength="100" list="lista-bancos" placeholder="Ex: Itaú, Nubank, Bradesco"/></label>
-        <label class="field"><span>Agência</span><input type="text" id="cx-agencia" maxlength="30" placeholder="0000"/></label>
-        <label class="field"><span>Conta</span><input type="text" id="cx-conta" maxlength="30" placeholder="00000-0"/></label>
+        <label class="field"><span>Agência</span><input type="text" id="cx-agencia" maxlength="6" inputmode="numeric" placeholder="0000-0"/><small class="hint">4 dígitos + dígito, se tiver</small></label>
+        <label class="field"><span>Conta</span><input type="text" id="cx-conta" maxlength="14" inputmode="numeric" placeholder="00000-0"/><small class="hint">até 12 dígitos + dígito</small></label>
       </div>
       <label class="field"><span>Saldo inicial (R$)</span><input type="number" id="cx-saldo" step="0.01" placeholder="0,00"/><small class="hint">Quanto havia na conta antes do primeiro lançamento no sistema.</small></label>
       <label class="field"><span>Observações</span><input type="text" id="cx-obs" maxlength="255"/></label>

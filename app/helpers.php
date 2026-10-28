@@ -78,6 +78,20 @@ function fmt_doc(string $doc): string {
     return fmt_cnpj($doc);
 }
 
+/** Agência (0000 ou 0000-0) e conta (até 12 dígitos + DV). DV pode ser X. Vazio = null. */
+function agencia_valida(?string $v): ?string {
+    $v = strtoupper(trim((string) $v));
+    if ($v === '') return null;
+    if (!preg_match('/^\d{1,4}(-[\dX])?$/', $v)) throw new \App\Core\HttpException(400, 'Agência inválida: use até 4 números e, se tiver, o dígito (ex.: 0350 ou 0350-1)');
+    return $v;
+}
+function conta_valida(?string $v): ?string {
+    $v = strtoupper(trim((string) $v));
+    if ($v === '') return null;
+    if (!preg_match('/^\d{1,12}(-[\dX])?$/', $v)) throw new \App\Core\HttpException(400, 'Conta inválida: use até 12 números e o dígito (ex.: 12345-6)');
+    return $v;
+}
+
 /** Texto curto do que mudou entre o registro antigo e o novo, pro log. */
 function diff_log(array $antes, array $depois, array $rotulos): string {
     $m = [];

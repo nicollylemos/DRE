@@ -38,6 +38,7 @@
     }).join('') : '<tr><td colspan="9" class="empty"><strong>Nenhuma conta ou caixa</strong>Cadastre as contas bancárias e caixas da empresa.</td></tr>';
     $('cx-aviso').innerHTML = cx.sem.qtd ? `⚠ ${cx.sem.qtd} lançamento(s) estão sem caixa/banco definido (${fmtBRLs(cx.sem.saldo)} já quitados). Eles aparecem no Fluxo de Caixa “Todos os caixas”, mas não no saldo de nenhuma conta — edite esses lançamentos e escolha o caixa.` : '';
   }
+  ligarMascara('cx-agencia', maskAgencia); ligarMascara('cx-conta', maskConta);
   function atualizarTipo() { $('cx-banco-wrap').classList.toggle('hidden', segValor('cx-tipo-seg') === 'caixa'); }
   $('cx-tipo-seg').addEventListener('change', atualizarTipo);
   function abrir(x = null) {

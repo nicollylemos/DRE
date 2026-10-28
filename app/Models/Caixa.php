@@ -24,8 +24,8 @@ class Caixa extends Model
         return [
             'nome' => mb_substr($nome, 0, 100), 'tipo' => $tipo,
             'banco' => $tipo === 'caixa' ? null : $c('banco', 100),
-            'agencia' => $tipo === 'caixa' ? null : $c('agencia', 30),
-            'conta' => $tipo === 'caixa' ? null : $c('conta', 30),
+            'agencia' => $tipo === 'caixa' ? null : agencia_valida($in['agencia'] ?? null),
+            'conta' => $tipo === 'caixa' ? null : conta_valida($in['conta'] ?? null),
             'saldo_inicial' => round(num($in['saldo_inicial'] ?? 0), 2),
             'observacoes' => $c('observacoes', 255),
         ];

@@ -18,7 +18,7 @@
     <table class="lgpd-tbl">
       <thead><tr><th>Finalidade</th><th>Base legal (art. 7º da LGPD)</th></tr></thead>
       <tbody>
-        <tr><td>Criar e manter sua conta, autenticar o acesso, recuperar senha por e-mail</td><td>Execução de contrato / procedimentos preliminares (inc. V) e consentimento (inc. I)</td></tr>
+        <tr><td>Criar e manter sua conta, autenticar o acesso</td><td>Execução de contrato / procedimentos preliminares (inc. V) e consentimento (inc. I)</td></tr>
         <tr><td>Controle financeiro, DRE, fluxo de caixa e guarda de notas fiscais</td><td>Cumprimento de obrigação legal ou regulatória — fiscal e contábil (inc. II) e execução de contrato (inc. V)</td></tr>
         <tr><td>Cadastro de clientes, fornecedores e parceiros</td><td>Execução de contrato (inc. V) e legítimo interesse (inc. IX)</td></tr>
         <tr><td>Logs, bloqueio por tentativas de senha e prevenção a fraudes</td><td>Legítimo interesse (inc. IX) e proteção do crédito/segurança (inc. X)</td></tr>
@@ -30,7 +30,6 @@
     <h2>4. Com quem compartilhamos</h2>
     <ul>
       <li><b>Hospedagem e banco de dados:</b> o provedor onde o sistema está instalado, apenas para armazenar e processar os dados.</li>
-      <li><b>Provedor de e-mail:</b> só o seu e-mail e o link de "Esqueci minha senha".</li>
       <li><b>Consulta de CNPJ (BrasilAPI):</b> quando você pede para buscar um CNPJ, só o número é enviado, para trazer dados públicos da Receita Federal.</li>
       <li><b>Contador, auditoria e autoridades:</b> quando houver obrigação legal ou ordem de autoridade competente.</li>
     </ul>
@@ -43,7 +42,6 @@
       <li><b>Dados financeiros, fiscais e notas fiscais:</b> pelo menos 5 anos, prazo de guarda exigido pela legislação tributária, ou mais se houver processo em andamento.</li>
       <li><b>Logs de atividade:</b> enquanto forem necessários para auditoria e segurança (recomendado: no mínimo 6 meses).</li>
       <li><b>Conta de usuário:</b> enquanto você tiver acesso. Depois de desativada, os dados podem ser apagados ou anonimizados a pedido, mantendo só o que a lei obriga a guardar (art. 16).</li>
-      <li><b>Links de troca de senha:</b> valem 1 hora e são descartados depois.</li>
     </ul>
 
     <h2>7. Seus direitos (art. 18)</h2>

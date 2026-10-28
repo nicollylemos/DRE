@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.3 — outubro/2026
+- **Limites nos campos** de Caixas/Banco e Formas de pagamento (no navegador e conferidos no servidor):
+  - Agência: até 4 números + dígito (0000-0) · Conta: até 12 números + dígito (00000-0) · o dígito pode ser X.
+  - Taxas de intermediação e parcelamento: de 0 a 100, com até 2 casas · Tarifa fixa: até R$ 9.999,99.
+  - Parcelas: 1 a 48 · Dias para recebimento: 0 a 365. Taxas aceitam vírgula ou ponto e ficam com 2 casas.
+
+## 3.1.2 — outubro/2026
+- **Retirada a recuperação de senha por e-mail** (tela "Esqueci minha senha", link por e-mail, envio SMTP, campo de e-mail do primeiro acesso e as variáveis `APP_URL`/`MAIL_*`). A tabela `password_resets` é apagada na atualização. Fica só a **troca de senha** em Meu perfil e a **redefinição pelo administrador** em Usuários e acessos.
+- Logo do **menu lateral** em versão clara, sem o fundo branco (mesma ideia da tela de entrada); idem no topo das páginas de Termo e Privacidade.
+
 ## 3.1.1 — outubro/2026
 - **Dados fictícios** para teste: `php app/Database/DadosFicticios.php` (clínica de jan/2025 a dez/2026, notas com XML e PDF, usuários de teste).
 - **Fluxo de caixa:** o saldo projetado passa a contar as contas em aberto de meses anteriores (atrasadas e, em meses futuros, as que vencem antes). Antes a projeção de um mês futuro ignorava o que ainda estava em aberto.
@@ -24,7 +34,6 @@
 - Tipo **Transferência**; formas que faltavam (cartão de débito e transferência) são criadas se ainda não existirem.
 
 ### Login e segurança
-- **Esqueci minha senha** com link por e-mail (SMTP próprio, sem Composer; 1 hora, uso único, só o hash fica no banco; resposta não revela se o usuário existe).
 - **LGPD**: Termo de uso e consentimento + Política de privacidade (`/termos`, `/privacidade`); aceite obrigatório no primeiro acesso e quando a versão muda, com data e versão gravadas.
 - Logo da tela de entrada em versão clara, sem o fundo branco.
 

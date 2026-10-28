@@ -6,7 +6,7 @@ $contato = Termos::email() ? '<a href="mailto:' . e(Termos::email()) . '">' . e(
 ?>
 <div class="lgpd">
   <header class="lgpd-top">
-    <a class="lgpd-marca" href="<?= e(url($logado ? '' : 'login')) ?>"><img src="<?= e(url('assets/img/logo-oaf-mark.png')) ?>" alt=""/><span><b>OAF</b> Controle Financeiro</span></a>
+    <a class="lgpd-marca" href="<?= e(url($logado ? '' : 'login')) ?>"><img src="<?= e(url('assets/img/logo-oaf-mark-clara.png')) ?>" alt=""/><span><b>OAF</b> Controle Financeiro</span></a>
     <nav><a href="<?= e(url('termos')) ?>" class="<?= $doc === 'termos' ? 'on' : '' ?>">Termo de uso</a><a href="<?= e(url('privacidade')) ?>" class="<?= $doc === 'privacidade' ? 'on' : '' ?>">Privacidade</a></nav>
   </header>
   <article class="lgpd-doc">

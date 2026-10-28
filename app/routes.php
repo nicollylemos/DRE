@@ -34,8 +34,6 @@ $router->get('api/auth/me', [AuthController::class, 'me']);
 $router->post('api/auth/trocar-senha', [AuthController::class, 'trocarSenha']);
 $router->add('POST|PUT', 'api/auth/profile', [AuthController::class, 'perfil']);
 $router->post('api/auth/aceitar-termos', [AuthController::class, 'aceitarTermos']);
-$router->post('api/auth/esqueci-senha', [AuthController::class, 'esqueciSenha']);
-$router->post('api/auth/redefinir-senha', [AuthController::class, 'redefinirSenha']);
 
 // ─── Relatórios ─────────────────────────────────────────────────────────────
 $router->get('api/dre', [DreController::class, 'dashboard']);

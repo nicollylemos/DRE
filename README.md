@@ -2,7 +2,7 @@
 
 Sistema de controle financeiro com DRE, fluxo de caixa, calendário de contas, cadastros, importação de planilhas e controle de acesso por usuário.
 
-**Versão 3.1.1 (out/2026)** — aparece na tela de login (constante `APP_VERSION` em `app/bootstrap.php`).
+**Versão 3.1.3 (out/2026)** — aparece na tela de login (constante `APP_VERSION` em `app/bootstrap.php`).
 
 PHP puro, **sem Composer e sem `npm install`**: Excel, PDF e leitura de planilhas são feitos em PHP.
 
@@ -125,7 +125,7 @@ A auditoria do cálculo (12.680 conferências) está em `docs/testes/AUDITORIA-D
 
 - Com o banco vazio, a tela de login mostra **"Primeiro acesso"**: crie o administrador (senha com **8+ caracteres, letras e números**).
 - Depois disso o cadastro público some. Novos usuários são criados em **Usuários e acessos**.
-- Esqueceu a senha? Clique em **Esqueci minha senha** na tela de entrada: chega um link por e-mail (vale 1 hora). Precisa ter e-mail no cadastro e `APP_URL` + `MAIL_*` configurados no `.env`. Sem e-mail, outro administrador redefine em **Usuários e acessos → ⋮ → Redefinir senha**.
+- Esqueceu a senha? Um administrador redefine em **Usuários e acessos → ⋮ → Redefinir senha** (gera uma senha provisória, trocada no próximo login). Cada pessoa troca a própria senha em **Meu perfil → Trocar senha**.
 - No primeiro acesso de cada pessoa aparece o **Termo de uso e a Política de privacidade (LGPD)** para aceitar. Preencha `LGPD_CONTROLADOR`, `LGPD_CNPJ` e `LGPD_EMAIL` no `.env`.
 - Se perder o único admin: rode no banco `UPDATE users SET tentativas_falhas=0, bloqueado_ate=NULL WHERE username='seu_usuario';` (desbloqueio) ou apague todos os usuários (`DELETE FROM users;`) para voltar ao "Primeiro acesso".
 
@@ -133,7 +133,7 @@ A auditoria do cálculo (12.680 conferências) está em `docs/testes/AUDITORIA-D
 
 ## 🔁 Atualizando da 3.0 para a 3.1
 
-Substitua os arquivos mantendo `.env`, `uploads/` e `storage/`, e abra o site — o banco atualiza sozinho (tabela de notas fiscais, links de senha, colunas novas). Depois acrescente no `.env` as linhas novas do `.env.example` (`APP_URL`, `MAIL_*`, `LGPD_*`, `EMPRESA_CNPJ`). Todo mundo vai aceitar o termo LGPD no próximo login. Relatório dos testes em `docs/testes/RELATORIO-TESTES.md`.
+Substitua os arquivos mantendo `.env`, `uploads/` e `storage/`, e abra o site — o banco atualiza sozinho (tabela de notas fiscais e colunas novas). Depois acrescente no `.env` as linhas novas do `.env.example` (`LGPD_*` e `EMPRESA_CNPJ`). Todo mundo vai aceitar o termo LGPD no próximo login. Relatório dos testes em `docs/testes/RELATORIO-TESTES.md`.
 
 ## 🔁 Atualizando da versão 2.x
 

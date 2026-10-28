@@ -11,7 +11,7 @@ use PDOException;
 final class App
 {
     /** Rotas da API que aceitam POST sem token CSRF (ainda não existe sessão). */
-    private const SEM_CSRF = ['api/auth/login', 'api/auth/register', 'api/auth/esqueci-senha', 'api/auth/redefinir-senha'];
+    private const SEM_CSRF = ['api/auth/login', 'api/auth/register'];
 
     /** Com troca de senha pendente, só estas rotas funcionam. */
     private const DURANTE_TROCA = ['api/auth/me', 'api/auth/trocar-senha', 'api/auth/logout', 'api/auth/setup-status', 'login', 'sair', 'privacidade', 'termos'];

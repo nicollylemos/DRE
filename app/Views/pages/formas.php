@@ -29,12 +29,12 @@
       <div class="grid">
         <label class="field span2"><span>Nome *</span><input type="text" id="fp-nome" maxlength="100" placeholder="Ex: Visa Crédito 3x, PIX Itaú, TED Itaú"/></label>
         <label class="field fp-banco"><span>Banco</span><input type="text" id="fp-banco" maxlength="100" list="lista-bancos" placeholder="Ex: Itaú"/></label>
-        <label class="field fp-banco"><span>Agência</span><input type="text" id="fp-agencia" maxlength="30" placeholder="0000"/></label>
-        <label class="field fp-credito"><span>Parcelas</span><input type="number" id="fp-parcelas" min="1" max="48" step="1" value="1"/></label>
-        <label class="field"><span>Dias para recebimento</span><input type="number" id="fp-dias" min="0" max="365" step="1" value="0"/></label>
-        <label class="field"><span>Taxa de intermediação (%)</span><input type="number" id="fp-taxa" min="0" max="100" step="0.01" placeholder="0,00"/></label>
-        <label class="field fp-credito"><span>Taxa de parcelamento (%)</span><input type="number" id="fp-taxa-parc" min="0" max="100" step="0.01" placeholder="0,00"/></label>
-        <label class="field"><span>Tarifa fixa por transação (R$)</span><input type="number" id="fp-tarifa" min="0" step="0.01" placeholder="0,00"/></label>
+        <label class="field fp-banco"><span>Agência</span><input type="text" id="fp-agencia" maxlength="6" inputmode="numeric" placeholder="0000-0"/></label>
+        <label class="field fp-credito"><span>Parcelas</span><input type="text" id="fp-parcelas" maxlength="2" inputmode="numeric" value="1"/><small class="hint">de 1 a 48</small></label>
+        <label class="field"><span>Dias para recebimento</span><input type="text" id="fp-dias" maxlength="3" inputmode="numeric" value="0"/><small class="hint">de 0 a 365 (0 = na hora)</small></label>
+        <label class="field"><span>Taxa de intermediação (%)</span><input type="text" id="fp-taxa" maxlength="6" inputmode="decimal" placeholder="0,00"/><small class="hint">de 0 a 100, com até 2 casas</small></label>
+        <label class="field fp-credito"><span>Taxa de parcelamento (%)</span><input type="text" id="fp-taxa-parc" maxlength="6" inputmode="decimal" placeholder="0,00"/><small class="hint">de 0 a 100, com até 2 casas</small></label>
+        <label class="field"><span>Tarifa fixa por transação (R$)</span><input type="text" id="fp-tarifa" maxlength="7" inputmode="decimal" placeholder="0,00"/><small class="hint">até R$ 9.999,99</small></label>
       </div>
       <div class="taxa" id="fp-simula"></div>
       <div class="form-error" id="fp-error"></div>

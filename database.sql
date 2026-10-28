@@ -199,18 +199,6 @@ CREATE TABLE IF NOT EXISTS notas_fiscais (
   INDEX idx_nf_emissao (data_emissao)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS password_resets (
-  id         INT AUTO_INCREMENT PRIMARY KEY,
-  user_id    INT NOT NULL,
-  token_hash CHAR(64) NOT NULL,
-  expira_em  DATETIME NOT NULL,
-  usado_em   DATETIME NULL,
-  ip         VARCHAR(64) NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_reset_token (token_hash),
-  INDEX idx_reset_user (user_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE IF NOT EXISTS importacoes (
   id           INT AUTO_INCREMENT PRIMARY KEY,
   tipo         VARCHAR(30) NOT NULL,

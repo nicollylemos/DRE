@@ -50,7 +50,7 @@ No estresse o servidor atendeu **151 requisições por segundo** sem nenhuma fal
 
 Pra garantir os 100 usuários com folga, a sugestão é uma **VPS de 2 vCPU e 8 GB** — exatamente o porte testado. Na Hostinger isso é o plano **KVM 2** (2 vCPU, 8 GB, 100 GB de disco). A configuração de nginx usada no teste está em `docs/nginx.conf.exemplo`.
 
-Se o grupo preferir hospedagem compartilhada (mais simples, sem administrar servidor), o sistema funciona com o `.htaccess` que já vem no projeto, mas esses planos limitam CPU e processos PHP: o Web Premium tem 40 workers PHP e 1 núcleo, o Cloud Startup tem 100 workers e 4 núcleos. Pra 100 pessoas ao mesmo tempo, o **Cloud Startup** é o mínimo seguro; o compartilhado básico serve pra uso da equipe pequena. Qualquer que seja a escolha, ligue o **HTTPS** (Let's Encrypt é grátis) e configure `APP_URL` e `MAIL_*` no `.env`.
+Se o grupo preferir hospedagem compartilhada (mais simples, sem administrar servidor), o sistema funciona com o `.htaccess` que já vem no projeto, mas esses planos limitam CPU e processos PHP: o Web Premium tem 40 workers PHP e 1 núcleo, o Cloud Startup tem 100 workers e 4 núcleos. Pra 100 pessoas ao mesmo tempo, o **Cloud Startup** é o mínimo seguro; o compartilhado básico serve pra uso da equipe pequena. Qualquer que seja a escolha, ligue o **HTTPS** (Let's Encrypt é grátis).
 
 ## 5. Conferência dos bugs da auditoria
 

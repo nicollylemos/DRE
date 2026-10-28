@@ -52,8 +52,8 @@
     simular();
   }
   function simular() {
-    const t = segValor('fp-tipo-seg'), taxa = parseFloat($('fp-taxa').value) || 0, tarifa = parseFloat($('fp-tarifa').value) || 0;
-    const dias = parseInt($('fp-dias').value, 10) || 0, parc = parseInt($('fp-parcelas').value, 10) || 1, tparc = parseFloat($('fp-taxa-parc').value) || 0;
+    const t = segValor('fp-tipo-seg'), taxa = numBR($('fp-taxa').value), tarifa = numBR($('fp-tarifa').value);
+    const dias = parseInt($('fp-dias').value, 10) || 0, parc = parseInt($('fp-parcelas').value, 10) || 1, tparc = numBR($('fp-taxa-parc').value);
     const desc = taxa / 100 * 100 + tarifa;
     let html = `Numa venda de <strong>R$ 100,00</strong> a empresa recebe <strong>${fmtBRL(100 - desc)}</strong> ${dias ? `em <strong>D+${dias}</strong>` : '<strong>na hora</strong>'}`
       + (desc ? ` (desconto de ${fmtBRL(desc)} = intermediação${tarifa ? ' + tarifa fixa' : ''}).` : '.');
@@ -61,7 +61,15 @@
     $('fp-simula').innerHTML = html;
   }
   $('fp-tipo-seg').addEventListener('change', atualizarTipo);
+  // Limites dos campos (o servidor confere de novo)
+  ligarMascara('fp-agencia', maskAgencia);
+  ligarMascara('fp-taxa', v => maskDecimal(v, 3, 2, 100));
+  ligarMascara('fp-taxa-parc', v => maskDecimal(v, 3, 2, 100));
+  ligarMascara('fp-tarifa', v => maskDecimal(v, 4, 2, 9999.99));
+  ligarMascara('fp-parcelas', v => { const d = soDigitos(v).slice(0, 2); return d && Number(d) > 48 ? '48' : d; });
+  ligarMascara('fp-dias', v => { const d = soDigitos(v).slice(0, 3); return d && Number(d) > 365 ? '365' : d; });
   ['fp-taxa', 'fp-tarifa', 'fp-dias', 'fp-parcelas', 'fp-taxa-parc'].forEach(id => $(id).addEventListener('input', simular));
+  ['fp-taxa', 'fp-taxa-parc', 'fp-tarifa'].forEach(id => $(id).addEventListener('blur', () => { $(id).value = fmtNumBR(numBR($(id).value)); }));
   function abrir(x = null) {
     fp.editId = x ? x.id : null;
     $('fp-modal-title').textContent = x ? 'Editar forma de pagamento' : 'Nova forma de pagamento';
@@ -69,8 +77,8 @@
     segSet('fp-tipo-seg', x && x.tipo ? x.tipo : (fv('fp-f-tipo') || 'credito'));
     $('fp-nome').value = x ? x.nome : ''; $('fp-banco').value = x ? x.banco || '' : ''; $('fp-agencia').value = x ? x.agencia || '' : '';
     $('fp-parcelas').value = x ? x.parcelas : 1; $('fp-dias').value = x ? x.dias_recebimento : 0;
-    $('fp-taxa').value = x && x.taxa_intermediacao ? x.taxa_intermediacao : ''; $('fp-taxa-parc').value = x && x.taxa_parcelamento ? x.taxa_parcelamento : '';
-    $('fp-tarifa').value = x && x.tarifa_fixa ? x.tarifa_fixa : '';
+    $('fp-taxa').value = x ? fmtNumBR(x.taxa_intermediacao) : ''; $('fp-taxa-parc').value = x ? fmtNumBR(x.taxa_parcelamento) : '';
+    $('fp-tarifa').value = x ? fmtNumBR(x.tarifa_fixa) : '';
     atualizarTipo();
     abrirModal('modal-fp');
   }
@@ -79,7 +87,9 @@
   $('btn-salvar-fp').addEventListener('click', async () => {
     const body = { tipo: segValor('fp-tipo-seg'), nome: $('fp-nome').value.trim(), banco: $('fp-banco').value.trim(), agencia: $('fp-agencia').value.trim(),
       parcelas: parseInt($('fp-parcelas').value, 10) || 1, dias_recebimento: parseInt($('fp-dias').value, 10) || 0,
-      taxa_intermediacao: parseFloat($('fp-taxa').value) || 0, taxa_parcelamento: parseFloat($('fp-taxa-parc').value) || 0, tarifa_fixa: parseFloat($('fp-tarifa').value) || 0 };
+      taxa_intermediacao: numBR($('fp-taxa').value), taxa_parcelamento: numBR($('fp-taxa-parc').value), tarifa_fixa: numBR($('fp-tarifa').value) };
+    const parc = parseInt($('fp-parcelas').value, 10);
+    if (body.tipo === 'credito' && (!parc || parc < 1)) { $('fp-error').textContent = 'Parcelas: de 1 a 48.'; return; }
     if (!body.nome) { $('fp-error').textContent = 'Informe o nome da forma de pagamento.'; return; }
     const r = fp.editId ? await api('formas_pagamento/' + fp.editId, 'PUT', body) : await api('formas_pagamento', 'POST', body);
     if (r.error) { $('fp-error').textContent = r.error; return; }

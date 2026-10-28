@@ -406,7 +406,7 @@ html.menu-fechado{--side-w:116px}
 .sidebar{position:fixed;left:16px;top:16px;bottom:16px;width:calc(var(--side-w) - 32px);background:var(--navy);border-radius:22px;display:flex;flex-direction:column;padding:14px 12px;z-index:20;box-shadow:0 10px 30px rgba(40,42,92,.28);transition:width .2s ease}
 .side-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-shrink:0}
 .side-brand{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0;border-radius:14px}
-.side-brand img{width:46px;height:46px;padding:6px;object-fit:contain;background:#fff;border-radius:14px;box-shadow:0 0 0 1.5px rgba(201,165,95,.55),0 6px 14px rgba(0,0,0,.18);flex-shrink:0}
+.side-brand img{width:44px;height:44px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 4px 10px rgba(0,0,0,.3))}
 .side-brand-txt{display:flex;flex-direction:column;line-height:1.15;min-width:0;white-space:nowrap}
 .side-brand-txt strong{color:#fff;font-size:15px;font-weight:800;letter-spacing:.02em}
 .side-brand-txt small{color:rgba(255,255,255,.55);font-size:11.5px;font-weight:600}
@@ -759,8 +759,7 @@ a.fbadge:hover{filter:brightness(.95);text-decoration:underline}
   .modal-foot.spread{flex-direction:column-reverse;align-items:stretch;gap:10px}
 }
 
-/* login: esqueci a senha, aceite LGPD */
-.auth-esqueci{font-size:12.5px;font-weight:700}
+/* login: aceite LGPD */
 .auth-ok{font-size:13.5px;color:var(--pos);background:var(--pos-soft);padding:10px 12px;border-radius:10px;font-weight:600;line-height:1.45}
 .check.top{align-items:flex-start;line-height:1.45}.check.top input{margin-top:2px}
 .check a,.auth-version a{color:var(--navy-2);font-weight:700}
@@ -773,7 +772,7 @@ a.fbadge:hover{filter:brightness(.95);text-decoration:underline}
 .lgpd{min-height:100vh;background:var(--bg)}
 .lgpd-top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 24px;background:var(--navy);color:#fff;flex-wrap:wrap}
 .lgpd-marca{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-size:15px}
-.lgpd-marca img{width:34px;height:34px;border-radius:9px;background:#fff;padding:3px}
+.lgpd-marca img{width:34px;height:34px;object-fit:contain}
 .lgpd-marca b{color:var(--gold)}
 .lgpd-top nav{display:flex;gap:6px}
 .lgpd-top nav a{color:rgba(255,255,255,.75);text-decoration:none;font-weight:700;font-size:14px;padding:8px 12px;border-radius:9px}

@@ -14,7 +14,7 @@ use App\Core\Permissions;
  */
 final class Migrator
 {
-    public const VERSAO = 8;
+    public const VERSAO = 9;
 
     public static function tabelas(): array
     {
@@ -204,18 +204,6 @@ final class Migrator
                 INDEX idx_nf_chave (chave),
                 INDEX idx_nf_emissao (data_emissao)
             ) $e",
-            // Links de "Esqueci minha senha": só o hash do token fica no banco; vale 1 hora e uma vez.
-            'password_resets' => "CREATE TABLE IF NOT EXISTS password_resets (
-                id         INT AUTO_INCREMENT PRIMARY KEY,
-                user_id    INT NOT NULL,
-                token_hash CHAR(64) NOT NULL,
-                expira_em  DATETIME NOT NULL,
-                usado_em   DATETIME NULL,
-                ip         VARCHAR(64) NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE KEY uq_reset_token (token_hash),
-                INDEX idx_reset_user (user_id)
-            ) $e",
             // Histórico de importações de planilha (permite desfazer).
             'importacoes' => "CREATE TABLE IF NOT EXISTS importacoes (
                 id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -305,6 +293,9 @@ final class Migrator
             if ((int) Database::value('SELECT COUNT(*) FROM formas_pagamento WHERE nome=?', [$nome])) continue;
             Database::run('INSERT INTO formas_pagamento (nome, tipo, parcelas, dias_recebimento, taxa_intermediacao, taxa_parcelamento, tarifa_fixa, ativo) VALUES (?,?,1,?,0,0,0,1)', [$nome, $tipo, $dias]);
         }
+
+        // v9: recuperação de senha por e-mail foi retirada — some com a tabela dos links.
+        $pdo->exec('DROP TABLE IF EXISTS password_resets');
 
         // v8: taxa de cartão só existe em receita (auditoria, item 5) — limpa sobras antigas em despesas.
         Database::run("UPDATE transactions SET taxa_mdr=0, valor_liquido=valor WHERE tipo='expense' AND taxa_mdr<>0");

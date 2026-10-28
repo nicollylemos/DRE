@@ -34,17 +34,17 @@ class FormaPagamento extends Model
         if (Database::one('SELECT id FROM formas_pagamento WHERE nome=?' . ($id ? ' AND id<>?' : ''), $id ? [$nome, $id] : [$nome])) throw new HttpException(400, 'Já existe uma forma de pagamento com esse nome');
         $tipo = $in['tipo'] ?? '';
         if (!in_array($tipo, self::TIPOS, true)) throw new HttpException(400, 'Escolha o tipo da forma de pagamento');
-        $pct = fn($k) => min(100, max(0, round(num($in[$k] ?? 0), 4)));
+        $pct = fn($k) => min(100, max(0, round(num($in[$k] ?? 0), 2)));
         $c = fn($k, $n) => cut(str_or_null($in[$k] ?? null), $n);
         return [
             'nome' => mb_substr($nome, 0, 100), 'tipo' => $tipo,
             'banco' => $tipo === 'dinheiro' ? null : $c('banco', 100),
-            'agencia' => $tipo === 'dinheiro' ? null : $c('agencia', 30),
+            'agencia' => $tipo === 'dinheiro' ? null : agencia_valida($in['agencia'] ?? null),
             'parcelas' => $tipo === 'credito' ? min(48, max(1, (int) num($in['parcelas'] ?? 1))) : 1,
             'dias_recebimento' => min(365, max(0, (int) num($in['dias_recebimento'] ?? 0))),
             'taxa_intermediacao' => $pct('taxa_intermediacao'),
             'taxa_parcelamento' => $tipo === 'credito' ? $pct('taxa_parcelamento') : 0,
-            'tarifa_fixa' => max(0, round(num($in['tarifa_fixa'] ?? 0), 2)),
+            'tarifa_fixa' => min(9999.99, max(0, round(num($in['tarifa_fixa'] ?? 0), 2))),
         ];
     }
 

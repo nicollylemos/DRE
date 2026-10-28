@@ -8,7 +8,6 @@ use App\Core\Permissions;
 use App\Core\Response;
 use App\Core\Termos;
 use App\Core\View;
-use App\Models\PasswordReset;
 use App\Models\User;
 
 /**
@@ -45,17 +44,6 @@ class PageController extends Controller
     public function login(): void
     {
         $u = Auth::user();
-        // Link do e-mail "Esqueci minha senha": ?redefinir=<token>
-        $token = (string) ($_GET['redefinir'] ?? '');
-        if ($token !== '') {
-            if ($u) Auth::logout();
-            $r = PasswordReset::valido($token);
-            View::render('auth/login', [
-                'titulo' => 'Criar nova senha', 'precisaSetup' => false, 'trocarSenha' => false, 'aceitarTermos' => false,
-                'redefinir' => $r ? ['token' => $token, 'username' => $r['username'], 'nome' => $r['nome']] : ['invalido' => true],
-                'usuario' => null, 'next' => '', 'scriptsAuth' => ['pages/login.js'],
-            ], 'layouts/auth');
-        }
         $trocar = $u && (int) $u['deve_trocar_senha'];
         $termos = $u && !$trocar && Termos::pendente($u);
         if ($u && !$trocar && !$termos) Response::redirect($this->destino());
@@ -64,7 +52,6 @@ class PageController extends Controller
             'precisaSetup' => User::count() === 0,
             'trocarSenha' => $trocar,
             'aceitarTermos' => $termos,
-            'redefinir' => null,
             'usuario' => $u,
             'next' => $this->destino(false),
             'scriptsAuth' => ['pages/login.js'],

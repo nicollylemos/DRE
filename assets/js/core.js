@@ -276,6 +276,37 @@ function cpfValido(v) {
   for (let t = 9; t < 11; t++) { let s = 0; for (let i = 0; i < t; i++) s += Number(c[i]) * (t + 1 - i); if (Number(c[t]) !== ((10 * s) % 11) % 10) return false; }
   return true;
 }
+/** Agência: até 4 dígitos + dígito verificador opcional (0000-0; o DV pode ser X, como no BB). */
+function maskAgencia(v) {
+  const s = String(v || '').toUpperCase().replace(/[^0-9X-]/g, '');
+  const [corpo, dv] = s.split('-');
+  const c = (corpo || '').replace(/X/g, '').slice(0, 4);
+  return s.includes('-') && c ? `${c}-${(dv || '').replace(/-/g, '').slice(0, 1)}` : c;
+}
+/** Conta: até 12 dígitos + dígito verificador (00000000-0; o DV pode ser X). */
+function maskConta(v) {
+  const s = String(v || '').toUpperCase().replace(/[^0-9X-]/g, '');
+  const [corpo, dv] = s.split('-');
+  const c = (corpo || '').replace(/X/g, '').slice(0, 12);
+  return s.includes('-') && c ? `${c}-${(dv || '').replace(/-/g, '').slice(0, 1)}` : c;
+}
+/** Número com vírgula, limitado: ex. taxa 0–100 com 2 casas, tarifa até 9.999,99. */
+function maskDecimal(v, inteiros, casas, max) {
+  let s = String(v || '').replace(/\./g, ',').replace(/[^0-9,]/g, '');
+  const i = s.indexOf(',');
+  if (i >= 0) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/,/g, '');
+  let [a, b] = s.split(',');
+  a = (a || '').replace(/^0+(?=\d)/, '').slice(0, inteiros);
+  s = b !== undefined ? `${a || '0'},${b.slice(0, casas)}` : a;
+  if (max !== undefined && numBR(s) > max) s = String(max).replace('.', ',');
+  return s;
+}
+/** "1.234,56" / "3,19" / "3.19" → número. */
+function numBR(v) { const s = String(v ?? '').trim(); if (!s) return 0; const n = parseFloat(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s); return isFinite(n) ? n : 0; }
+const fmtNumBR = (n, casas = 2) => n ? Number(n).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas, useGrouping: false }) : '';
+/** Liga a máscara num campo (aplica ao digitar e ao colar). */
+function ligarMascara(id, fn) { const el = $(id); if (!el) return; el.addEventListener('input', () => { const v = fn(el.value); if (v !== el.value) el.value = v; }); }
+
 const maskDoc = v => soDigitos(v).length <= 11 ? maskCPF(v) : maskCNPJ(v);
 const docOk = v => { const n = soDigitos(v).length; return n === 14 ? cnpjValido(v) : n === 11 && cpfValido(v); };
 /** Dados públicos do CNPJ (BrasilAPI). */

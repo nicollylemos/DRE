@@ -10,7 +10,7 @@
       <li>O usuário e a senha são pessoais e intransferíveis. Não compartilhe sua senha e avise o administrador se suspeitar de uso indevido.</li>
       <li>Você enxerga e altera só as telas liberadas pelo seu nível de acesso.</li>
       <li>Depois de algumas senhas erradas seguidas o acesso é bloqueado por alguns minutos, para proteger a conta.</li>
-      <li>Mantenha seu e-mail atualizado em <b>Meu perfil</b> — ele é usado para recuperar a senha.</li>
+      <li>Troque sua senha quando quiser em <b>Meu perfil → Trocar senha</b>. Esqueceu? Um administrador redefine em <b>Usuários e acessos</b>.</li>
     </ul>
 
     <h2>3. Uso correto e sigilo</h2>
@@ -25,7 +25,6 @@
     <p>Nos termos dos arts. 7º, I, e 8º da LGPD, você autoriza, de forma livre, informada e inequívoca, que <b><?= e(\App\Core\Termos::controlador()) ?></b> trate seu nome, usuário, e-mail, foto (se enviar), endereço IP, data e hora de acesso e o histórico das ações feitas no sistema, para:</p>
     <ol>
       <li>identificar você e controlar o acesso de acordo com o seu nível;</li>
-      <li>enviar e-mails de segurança, como o link de "Esqueci minha senha";</li>
       <li>manter o registro de atividades (logs) para auditoria, segurança e prova das operações financeiras.</li>
     </ol>
     <p>Os demais tratamentos (dados financeiros, fiscais e de terceiros) se apoiam em outras bases legais — obrigação legal, execução de contrato e legítimo interesse — explicadas na Política de privacidade.</p>

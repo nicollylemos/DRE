@@ -4,7 +4,6 @@
     baixa: ['Baixa', 'act-create'], update_status: ['Situação', 'act-update'], update_role: ['Nível de acesso', 'act-warn'],
     reset_senha: ['Senha redefinida', 'act-warn'], import: ['Importação', 'act-create'], undo_import: ['Importação desfeita', 'act-delete'],
     export: ['Exportação', 'act-auth'], vincular: ['Vínculo', 'act-update'], aceite_termos: ['Aceite LGPD', 'act-auth'],
-    senha_esqueci: ['Pediu nova senha', 'act-warn'], senha_redefinida: ['Senha redefinida (e-mail)', 'act-warn'],
     login: ['Login', 'act-auth'], logout: ['Logout', 'act-auth'], login_failed: ['Login falhou', 'act-delete'], setup_admin: ['Config. inicial', 'act-warn'] };
   const AREAS = { transactions: 'Lançamentos', transfers: 'Transferências', clientes: 'Clientes', fornecedores: 'Fornecedores', parceiros: 'Parceiros',
     categorias: 'Categorias', caixas: 'Caixas / Banco', formas_pagamento: 'Formas de pagamento', users: 'Usuários', perfis: 'Níveis de acesso',

@@ -36,7 +36,7 @@ $inicial = mb_strtoupper(mb_substr(trim($user['nome'] ?: $user['username']), 0, 
 <aside class="sidebar" id="sidebar" aria-label="Menu principal">
   <div class="side-top">
     <a class="side-brand" href="<?= e(url($user['home'])) ?>" title="Página inicial">
-      <img src="<?= e(url('assets/img/logo-oaf-mark.png')) ?>" alt="OAF"/>
+      <img src="<?= e(url('assets/img/logo-oaf-mark-clara.png')) ?>" onerror="this.onerror=null;this.src='<?= e(url('assets/img/logo-oaf-mark.png')) ?>'" alt="OAF"/>
       <span class="side-brand-txt"><strong>OAF</strong><small>Controle Financeiro</small></span>
     </a>
     <button class="side-toggle" id="side-toggle" type="button" aria-label="Recolher menu" title="Recolher / expandir menu">
