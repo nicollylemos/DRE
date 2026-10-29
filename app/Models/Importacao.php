@@ -36,6 +36,7 @@ class Importacao extends Model
         $tab = self::TABELA_DO_TIPO[$imp['tipo']] ?? null;
         if (!$tab) return 0;
         return Database::transaction(function () use ($tab, $imp) {
+            if ($tab === 'transactions') foreach (Database::all('SELECT comprovante_path FROM transactions WHERE importacao_id=? AND comprovante_path IS NOT NULL', [$imp['id']]) as $c) \App\Services\Upload::apagar($c['comprovante_path']);
             if ($tab === 'transactions') Database::run('UPDATE notas_fiscais SET transaction_id=NULL WHERE transaction_id IN (SELECT id FROM transactions WHERE importacao_id=?)', [$imp['id']]);
             $n = Database::run("DELETE FROM `$tab` WHERE importacao_id=?", [$imp['id']]);
             Database::run('UPDATE importacoes SET desfeita_em=NOW() WHERE id=?', [$imp['id']]);

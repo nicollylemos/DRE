@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.3.0 — outubro/2026
+- **Meu perfil** redesenhado: cabeçalho com foto, cargo e perfil de acesso; abas *Dados profissionais* e *Segurança*.
+- Novos dados **só da empresa** no perfil: cargo, setor, telefone comercial + ramal, WhatsApp comercial e e-mail corporativo (nada de CPF, endereço ou telefone pessoal). O cargo aparece na lista de usuários.
+- **Apagar lançamento** direto no Calendário (lixeira em cada conta), na janela de detalhes e no formulário de edição — para lançamentos feitos por engano, sem precisar dar baixa. Continua guardando uma cópia nos Logs.
+- **Visual mais limpo e minimalista**: marinho mais profundo (menos arroxeado) e dourado mais sóbrio; cabeçalho das tabelas claro, sem a faixa azul; cards sem sombra, só com borda fina.
+- **Dashboard redesenhado**: um destaque só (lucro do ano, margem, receita e despesas), situação de agora numa faixa única, resumo do DRE sem bloco escuro e estados vazios mais caprichados.
+- **Menu lateral responsivo à altura da tela**: em notebooks e telas baixas o menu fica mais compacto e, se ainda não couber, rola. O perfil e o último item nunca somem. As dicas do menu recolhido não são mais cortadas.
+- **Níveis de acesso** reformulados: uma tabela só (telas × níveis) mostrando Editar, Ver ou sem acesso, no lugar dos cards cheios de etiquetas. Clique no nome do nível para editar.
+- **Datas obrigatórias no lançamento**: além da data, conta em aberto exige o vencimento e lançamento quitado exige a data de pagamento (o campo fica marcado com * e em vermelho se faltar; o servidor também confere).
+- **Calendário mostra todos os lançamentos**: antes ficavam de fora os quitados sem vencimento. Cada lançamento cai no vencimento; sem vencimento, na data de pagamento; sem as duas, na data do lançamento.
+- **Comprovante de pagamento** nos lançamentos (PDF ou foto, até 10 MB): anexar no formulário ou pelo menu, ver, baixar, trocar e remover. Ícone de clipe na lista e no Calendário. O arquivo fica em `storage/comprovantes/` (fora da pasta pública) e é apagado junto com o lançamento ou ao desfazer uma importação.
+
+## 3.2.0 — outubro/2026
+Refatoração com padrões de projeto, **sem mudar nenhuma funcionalidade** (resultados idênticos antes e depois):
+- **Strategy** no DRE: `app/Services/Dre/` — regimes (competência, caixa) e agrupamentos (categoria, grupo/conta, centro de custo) viraram classes.
+- **Factory** na leitura do XML das notas: `app/Services/NotaFiscal/` — um leitor por layout (NF-e, NFS-e Nacional, NFS-e ABRASF) escolhido pela `FabricaLeitorNotaFiscal`.
+- **Observer** nos lançamentos: `app/Eventos/` + `app/eventos.php` — criar/apagar lançamento dispara eventos; vincular/desvincular a nota fiscal virou ouvinte.
+- Diagrama de classes (Mermaid + PNG) e explicação em `docs/padroes/`.
+- Removidos `app/Models/PasswordReset.php` e `app/Services/Mailer.php`, que sobraram da recuperação de senha por e-mail.
+
 ## 3.1.3 — outubro/2026
 - **Limites nos campos** de Caixas/Banco e Formas de pagamento (no navegador e conferidos no servidor):
   - Agência: até 4 números + dígito (0000-0) · Conta: até 12 números + dígito (00000-0) · o dígito pode ser X.

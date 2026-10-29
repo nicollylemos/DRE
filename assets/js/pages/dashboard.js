@@ -16,13 +16,17 @@
     $('dash-desp').textContent = fmtBRL(desp);
     $('dash-desp-sub').textContent = liq ? `${Math.round(desp / liq * 100)}% da receita líquida` : '';
     $('dash-lucro').textContent = fmtBRLs(lucro);
-    $('dash-lucro').classList.toggle('neg-on-dark', lucro < 0);
-    $('dash-lucro-sub').textContent = lucro < 0 ? 'prejuízo no exercício' : 'resultado do exercício';
+    $('dash-lucro').classList.toggle('neg', lucro < 0);
+    $('dash-lucro-sub').textContent = `${lucro < 0 ? 'Prejuízo' : 'Lucro'} líquido · ${dash.ano}`;
     $('dash-margem').textContent = liq ? fmtPct(lucro / liq) : '—';
+    const vazio = !bruta && !desp;
+    $('page-dashboard').classList.toggle('sem-dados', vazio);
 
     const ab = r.emAberto || {};
     $('dash-areceber').textContent = fmtBRL(ab.a_receber);
     $('dash-apagar').textContent = fmtBRL(ab.a_pagar);
+    $('dash-areceber').className = ab.a_receber > 0 ? 'pos' : '';
+    $('dash-apagar').className = ab.a_pagar > 0 ? 'neg' : '';
     $('dash-vencidos').textContent = String(Math.round(ab.qtd_vencidos || 0));
     $('dash-vencidos').className = ab.qtd_vencidos ? 'neg' : '';
     $('dash-vencidos-sub').textContent = ab.qtd_vencidos ? `${fmtBRL(ab.pagar_vencido)} a pagar · ${fmtBRL(ab.receber_vencido)} a receber` : 'nada vencido';
@@ -49,7 +53,8 @@
   // Mesmo período do ano anterior
   function renderCompara(c) {
     const el = $('dash-compara');
-    if (!c || (!c.anterior.receita && !c.anterior.despesa)) { el.innerHTML = `<p class="muted">Sem dados de ${dash.ano - 1} para comparar.</p>`; return; }
+    if (!c || (!c.anterior.receita && !c.anterior.despesa)) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
     const periodo = c.ate_mes === 12 ? `ano todo` : `jan–${MESES_CURTOS[c.ate_mes - 1].toLowerCase()}`;
     const var_ = (a, b, inverso) => {
       if (!b) return '<span class="dim">—</span>';
@@ -64,7 +69,7 @@
 
   function renderProximos(lista) {
     const el = $('dash-proximos');
-    if (!lista.length) { el.innerHTML = '<div class="ag-empty">Nada vencendo nos próximos dias. 🎉</div>'; return; }
+    if (!lista.length) { el.innerHTML = '<div class="vazio mini"><b>Tudo em dia</b><p>Nada vencendo nos próximos 7 dias.</p></div>'; return; }
     const hoje = hojeISO();
     el.innerHTML = lista.map(x => {
       const dias = Math.round((new Date(x.venc + 'T12:00') - new Date(hoje + 'T12:00')) / 864e5);
@@ -78,7 +83,7 @@
 
   function renderCaixas(lista) {
     const el = $('dash-caixas');
-    if (!lista.length) { el.innerHTML = '<div class="ag-empty">Nenhuma conta cadastrada.</div>'; return; }
+    if (!lista.length) { el.innerHTML = '<div class="vazio mini"><b>Nenhuma conta cadastrada</b><p>Cadastre seus caixas e bancos para ver os saldos.</p></div>'; return; }
     const max = Math.max(...lista.map(c => Math.abs(c.saldo_atual)), 1);
     const TIPO = { banco: 'Banco', caixa: 'Caixa físico', investimento: 'Investimento' };
     el.innerHTML = lista.map(c => `<div class="saldo-row"><div class="nm">${avatar(c.nome)}<div><b>${esc(c.nome)}</b><small>${TIPO[c.tipo] || esc(c.tipo)}</small></div></div>
@@ -94,13 +99,18 @@
       return `<div class="cat-row"><span class="nm"><i style="background:${esc(cor)}"></i>${esc(nome)}</span>
         <span class="vl">${fmtBRL(v)}<small>${Math.round(v / total * 100)}%</small></span>
         <div class="trk"><span style="width:${(v / max * 100).toFixed(1)}%;background:${esc(cor)}"></span></div></div>`;
-    }).join('') : '<div class="empty-chart" style="grid-column:1/-1;padding:30px">Nenhuma despesa neste exercício.</div>';
+    }).join('') : '<div class="vazio mini" style="grid-column:1/-1"><b>Sem despesas em ' + dash.ano + '</b><p>As categorias com mais gastos aparecem aqui.</p></div>';
   }
 
   // Barras agrupadas por mês: receita líquida x despesas. Tooltip por mês (hover/foco).
   function renderChartMeses(el, rec, desp) {
     const max = Math.max(...rec, ...desp, 0);
-    if (!max) { el.innerHTML = '<div class="empty-chart">Sem lançamentos neste exercício.</div>'; return; }
+    if (!max) {
+      el.innerHTML = `<div class="vazio"><span class="vazio-ico"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+        <b>Nada lançado em ${dash.ano}</b><p>Quando houver receitas e despesas, a evolução mês a mês aparece aqui.</p>
+        ${podeEditar('lancamentos') ? `<a class="btn btn-ghost" href="${esc(url('lancamentos'))}">Ir para Lançamentos</a>` : ''}</div>`;
+      return;
+    }
     const W = 720, H = 250, pl = 54, pr = 6, pt = 10, pb = 26, ih = H - pt - pb;
     const passo = Math.pow(10, Math.floor(Math.log10(max))) / 2;
     const topo = Math.ceil(max / passo / 4) * passo * 4 || 1;

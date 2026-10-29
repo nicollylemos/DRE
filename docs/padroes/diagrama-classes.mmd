@@ -1,0 +1,302 @@
+---
+title: DRE System (OAF) — Diagrama de classes com os padrões de projeto
+---
+classDiagram
+    direction TB
+
+    %% ═══════════ FRONT CONTROLLER + MVC (arquitetura) ═══════════
+    namespace FrontController_MVC {
+        class index_php {
+            <<entrada única>>
+            +require bootstrap.php
+            +App::run()
+        }
+        class App {
+            <<Front Controller>>
+            -array SEM_CSRF$
+            -array DURANTE_TROCA$
+            -array DURANTE_TERMOS$
+            +run()$ void
+            -paginaErro(status, msg)$ void
+        }
+        class Router {
+            -routes : array
+            +add(metodos, padrao, acao) void
+            +get(padrao, acao) void
+            +post(padrao, acao) void
+            +match(metodo, caminho) array
+            +dispatch(acao, params) mixed
+        }
+        class View {
+            +render(view, dados, layout)$ void
+            +partial(view, dados)$ string
+        }
+        class Request {
+            +method()$ string
+            +path()$ string
+            +body()$ array
+            +input(chave, padrao)$ mixed
+        }
+        class Response {
+            +json(dados, status)$ void
+            +download(conteudo, mime, nome)$ void
+            +redirect(caminho)$ void
+        }
+    }
+
+    %% ═══════════ SINGLETON ═══════════
+    namespace Singleton {
+        class Database {
+            <<Singleton>>
+            -PDO pdo$
+            +pdo()$ PDO
+            +all(sql, params)$ array
+            +one(sql, params)$ array
+            +run(sql, params)$ int
+            +insert(sql, params)$ int
+            +transaction(fn)$ mixed
+        }
+    }
+
+    %% ═══════════ CLASSES BASE (Layer Supertype) ═══════════
+    namespace ClassesBase {
+        class Controller {
+            <<abstract>>
+            #autorizar(telas) array
+            #autorizarEdicao(tela) array
+            #somenteAdmin() array
+            #input(chave, padrao) mixed
+            #log(acao, entidade, id, detalhes, usuario, dados) void
+        }
+        class Model {
+            <<abstract>>
+            #string table$
+            +find(id)$ array
+            +findOrFail(id, msg)$ array
+            +create(dados)$ int
+            +update(id, dados)$ int
+            +delete(id)$ int
+        }
+    }
+
+    namespace Controllers {
+        class TransacaoController {
+            +index() array
+            +store() array
+            +update(id) array
+            +patch(id) array
+            +destroy(id) array
+        }
+        class DreController {
+            +dashboard() array
+            +demonstrativo() array
+            +fluxoCaixa() array
+        }
+        class NotaFiscalController {
+            +store() array
+            +lerXml() array
+            +vincular(id) array
+            +lote() array
+        }
+        class ExportController {
+            +excel() void
+            +pdf() void
+            +dreExcel() void
+        }
+    }
+
+    namespace Models {
+        class Transacao {
+            +campos(dados)$ array
+            +listar(filtros)$ array
+            +taxaMdr(forma, valor)$ float
+        }
+        class NotaFiscal {
+            +listar(filtros)$ array
+            +sugerirTipo(xml)$ string
+            +sugerirLancamento(nota, xml)$ array
+            +desvincularLancamento(idLanc)$ void
+        }
+        class Log {
+            +registrar(acao, entidade, id, detalhes, usuario, dados)$ void
+            +buscar(filtros, pagina, limite)$ array
+        }
+        class OutrosModels {
+            <<User, Caixa, Categoria, Cliente, Fornecedor, FormaPagamento...>>
+        }
+    }
+
+    %% ═══════════ STRATEGY (cálculo do DRE) ═══════════
+    namespace Strategy {
+        class DreService {
+            <<Context>>
+            +dashboard(ano)$ array
+            +demonstrativo(ano, agrupar, regime)$ array
+            +fluxoCaixa(ano, mes, caixa)$ array
+            -totaisAno(ano, RegimeDre, AgrupamentoDre)$ array
+        }
+        class EstrategiasDre {
+            +regimes()$ RegimeDre[]
+            +agrupamentos()$ AgrupamentoDre[]
+            +regime(chave)$ RegimeDre
+            +agrupamento(chave)$ AgrupamentoDre
+            +rotulos(estrategias)$ array
+        }
+        class RegimeDre {
+            <<interface>>
+            +chave() string
+            +rotulo() string
+            +movimentos(ano) array
+        }
+        class RegimeCompetencia {
+            +movimentos(ano) array
+        }
+        class RegimeCaixa {
+            +movimentos(ano) array
+        }
+        class AgrupamentoDre {
+            <<interface>>
+            +chave() string
+            +rotulo() string
+            +item(lancamento) string
+        }
+        class AgrupamentoPorCategoria {
+            +item(lancamento) string
+        }
+        class AgrupamentoPorGrupoConta {
+            +item(lancamento) string
+        }
+        class AgrupamentoPorCentroCusto {
+            +item(lancamento) string
+        }
+    }
+
+    %% ═══════════ FACTORY (leitura do XML da nota fiscal) ═══════════
+    namespace Factory {
+        class NotaFiscalXml {
+            <<Client>>
+            +array TPAG$
+            +ler(xml)$ array
+        }
+        class FabricaLeitorNotaFiscal {
+            <<Factory>>
+            -candidatos()$ LeitorNotaFiscal[]
+            +criar(DocumentoXml)$ LeitorNotaFiscal
+        }
+        class DocumentoXml {
+            -xp : DOMXPath
+            +carregar(xml)$ DocumentoXml
+            +no(caminho, contexto) DOMNode
+            +nos(caminho, contexto) DOMNode[]
+            +txt(caminhos, contexto) string
+            +temAlguma(tags) bool
+        }
+        class LeitorNotaFiscal {
+            <<abstract>>
+            +reconhece(DocumentoXml)* bool
+            +ler(DocumentoXml)* array
+            #base()$ array
+            #data(texto)$ string
+            #valor(texto)$ float
+            #pessoa(doc, no)$ array
+        }
+        class LeitorNfe {
+            +array TPAG$
+            +reconhece(DocumentoXml) bool
+            +ler(DocumentoXml) array
+        }
+        class LeitorNfseNacional {
+            +reconhece(DocumentoXml) bool
+            +ler(DocumentoXml) array
+        }
+        class LeitorNfseAbrasf {
+            +reconhece(DocumentoXml) bool
+            +ler(DocumentoXml) array
+        }
+    }
+
+    %% ═══════════ OBSERVER (eventos dos lançamentos) ═══════════
+    namespace Observer {
+        class Despachante {
+            <<Subject>>
+            -array ouvintes$
+            +ouvir(nomeEvento, Ouvinte)$ void
+            +disparar(Evento)$ void
+        }
+        class Evento {
+            +string LANCAMENTO_CRIADO$
+            +string LANCAMENTO_APAGADO$
+            +nome : string
+            +dados : array
+        }
+        class Ouvinte {
+            <<interface>>
+            +ouvir(Evento) void
+        }
+        class VincularNotaFiscal {
+            +ouvir(Evento) void
+        }
+        class DesvincularNotasFiscais {
+            +ouvir(Evento) void
+        }
+    }
+
+    %% ─── Front Controller / MVC
+    index_php --> App : chama
+    App --> Router : resolve a rota
+    App ..> Request
+    App ..> Response
+    Router ..> Controller : instancia e chama
+    Controller ..> View : páginas HTML
+    Controller ..> Log : registra atividade
+
+    %% ─── Classes base
+    Controller <|-- TransacaoController
+    Controller <|-- DreController
+    Controller <|-- NotaFiscalController
+    Controller <|-- ExportController
+    Model <|-- Transacao
+    Model <|-- NotaFiscal
+    Model <|-- Log
+    Model <|-- OutrosModels
+
+    %% ─── Singleton
+    Model ..> Database : usa a conexão única
+    RegimeCompetencia ..> Database
+    RegimeCaixa ..> Database
+
+    %% ─── Strategy
+    DreController ..> DreService
+    ExportController ..> DreService
+    ExportController ..> EstrategiasDre
+    DreService ..> EstrategiasDre : escolhe as estratégias
+    DreService --> RegimeDre : usa
+    DreService --> AgrupamentoDre : usa
+    EstrategiasDre ..> RegimeDre : cria
+    EstrategiasDre ..> AgrupamentoDre : cria
+    RegimeDre <|.. RegimeCompetencia
+    RegimeDre <|.. RegimeCaixa
+    AgrupamentoDre <|.. AgrupamentoPorCategoria
+    AgrupamentoDre <|.. AgrupamentoPorGrupoConta
+    AgrupamentoDre <|.. AgrupamentoPorCentroCusto
+
+    %% ─── Factory
+    NotaFiscalController ..> NotaFiscalXml
+    NotaFiscalXml ..> DocumentoXml : carrega o XML
+    NotaFiscalXml ..> FabricaLeitorNotaFiscal : pede o leitor
+    FabricaLeitorNotaFiscal ..> LeitorNotaFiscal : cria
+    LeitorNotaFiscal <|-- LeitorNfe
+    LeitorNotaFiscal <|-- LeitorNfseNacional
+    LeitorNotaFiscal <|-- LeitorNfseAbrasf
+    LeitorNotaFiscal ..> DocumentoXml : lê os campos
+
+    %% ─── Observer
+    TransacaoController ..> Despachante : dispara eventos
+    TransacaoController ..> Evento : cria
+    Despachante "1" o-- "*" Ouvinte : avisa
+    Despachante ..> Evento
+    Ouvinte <|.. VincularNotaFiscal
+    Ouvinte <|.. DesvincularNotasFiscais
+    VincularNotaFiscal ..> NotaFiscal
+    VincularNotaFiscal ..> Log
+    DesvincularNotasFiscais ..> NotaFiscal

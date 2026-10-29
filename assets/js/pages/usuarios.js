@@ -47,7 +47,7 @@
         !sou && { label: 'Apagar', danger: true, fn: () => apagar(u) },
       ]);
       return `<tr class="${u.ativo ? '' : 'inativo'}">
-        <td><div class="who">${avatar(u.nome || u.username, u.foto_path)}<div><span class="ttl">${esc(u.nome || u.username)}${sou ? ' <span class="you">você</span>' : ''}</span><small>@${esc(u.username)}${u.email ? ' · ' + esc(u.email) : ''}</small></div></div></td>
+        <td><div class="who">${avatar(u.nome || u.username, u.foto_path)}<div><span class="ttl">${esc(u.nome || u.username)}${sou ? ' <span class="you">você</span>' : ''}</span><small>@${esc(u.username)}${u.cargo ? ' · ' + esc(u.cargo) + (u.setor ? ' (' + esc(u.setor) + ')' : '') : ''}${u.email ? ' · ' + esc(u.email) : ''}</small></div></div></td>
         <td><span class="tp ${u.is_admin ? 'admin' : 'ambos'}">${esc(u.perfil_nome || 'Sem nível')}</span></td>
         <td>${situacao(u)}</td>
         <td class="nowrap">${u.ultimo_login ? `${fmtDataHora(u.ultimo_login)}${u.ultimo_ip ? `<small>${esc(u.ultimo_ip)}</small>` : ''}` : '<span class="dim">Nunca entrou</span>'}</td>
@@ -192,22 +192,30 @@
   // ═══════════ NÍVEIS DE ACESSO ═══════════
   function renderPerfis() {
     const grupos = [...new Set(st.telas.map(t => t.grupo))];
-    $('perfis-grid').innerHTML = st.perfis.map(p => {
-      const linhas = grupos.map(g => {
-        const ts = st.telas.filter(t => t.grupo === g && p.permissoes[t.chave] > 0);
-        if (!ts.length) return '';
-        return `<div class="pf-g"><small>${esc(g)}</small><div class="chips">${ts.map(t => `<span class="chip ${p.permissoes[t.chave] === 2 ? '' : 'gray'}" title="${NIVEIS[p.permissoes[t.chave]]}">${esc(t.label)}${p.permissoes[t.chave] === 1 ? ' · ver' : ''}</span>`).join('')}</div></div>`;
-      }).join('');
-      return `<article class="pf-card ${p.is_admin ? 'admin' : ''}">
-        <header><div><h3>${esc(p.nome)}</h3><p>${esc(p.descricao || '')}</p></div>${acoes('pf' + p.id, [
+    const ICO = {
+      2: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>',
+      1: '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+    };
+    const celula = n => n === 2 ? `<span class="nv e">${ICO[2]}Editar</span>` : n === 1 ? `<span class="nv v">${ICO[1]}Ver</span>` : '<span class="nv n">—</span>';
+    const nivelDe = (p, t) => p.is_admin ? (t.editavel ? 2 : 1) : (p.permissoes[t.chave] || 0);
+    const head = st.perfis.map(p => `<th class="nv-col${p.is_admin ? ' adm' : ''}">
+        <div class="nv-h"><button type="button" class="nv-nome" data-pf="${p.id}" title="Editar nível">${esc(p.nome)}</button>${acoes('pf' + p.id, [
           { label: 'Editar', fn: () => abrirPerfil(p) },
           !p.is_admin && { label: 'Duplicar', fn: () => abrirPerfil(p, true) },
           !p.is_admin && !p.sistema && { label: 'Apagar', danger: true, fn: () => apagarPerfil(p) },
-        ])}</header>
-        <div class="pf-body">${p.is_admin ? '<div class="chips"><span class="chip gold">Todas as telas</span><span class="chip gold">Usuários e acessos</span></div>' : (linhas || '<span class="dim">Nenhuma tela liberada</span>')}</div>
-        <footer><span>${p.qtd_usuarios} usuário(s)</span>${p.sistema ? '<span class="chip gray">padrão do sistema</span>' : ''}</footer>
-      </article>`;
-    }).join('');
+        ])}</div>
+        <small class="nv-desc" title="${esc(p.descricao || '')}">${esc(p.descricao || (p.is_admin ? 'Acesso total' : ''))}</small>
+        <small class="nv-qtd">${p.qtd_usuarios} ${p.qtd_usuarios === 1 ? 'usuário' : 'usuários'}${p.sistema ? ' · padrão' : ''}</small></th>`).join('');
+    let corpo = '';
+    grupos.forEach(g => {
+      corpo += `<tr class="nv-g"><td colspan="${st.perfis.length + 1}">${esc(g)}</td></tr>`;
+      st.telas.filter(t => t.grupo === g).forEach(t => {
+        corpo += `<tr><td class="nv-tela" ${t.editar_desc ? `title="Editar = ${esc(t.editar_desc)}"` : ''}>${esc(t.label)}</td>${st.perfis.map(p => `<td>${celula(nivelDe(p, t))}</td>`).join('')}</tr>`;
+      });
+      if (g === 'Sistema') corpo += `<tr><td class="nv-tela" title="Só administradores gerenciam usuários e níveis">Usuários e acessos</td>${st.perfis.map(p => `<td>${celula(p.is_admin ? 2 : 0)}</td>`).join('')}</tr>`;
+    });
+    $('perfis-grid').innerHTML = `<table class="nv-tbl"><thead><tr><th class="nv-tela-h">Tela</th>${head}</tr></thead><tbody>${corpo}</tbody></table>`;
+    $('perfis-grid').querySelectorAll('.nv-nome').forEach(b => b.onclick = () => abrirPerfil(st.perfis.find(p => String(p.id) === b.dataset.pf)));
   }
 
   function renderMatriz(admin) {

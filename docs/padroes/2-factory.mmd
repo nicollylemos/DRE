@@ -1,0 +1,32 @@
+---
+title: Factory — leitor do XML da nota fiscal
+---
+classDiagram
+    direction LR
+    class NotaFiscalXml {
+        <<Client>>
+        +ler(xml)$ array
+    }
+    class FabricaLeitorNotaFiscal {
+        <<Factory>>
+        +criar(DocumentoXml)$ LeitorNotaFiscal
+    }
+    class DocumentoXml {
+        +carregar(xml)$ DocumentoXml
+        +txt(caminhos, contexto) string
+        +temAlguma(tags) bool
+    }
+    class LeitorNotaFiscal {
+        <<abstract>>
+        +reconhece(DocumentoXml)* bool
+        +ler(DocumentoXml)* array
+    }
+    class LeitorNfe { +ler(DocumentoXml) array }
+    class LeitorNfseNacional { +ler(DocumentoXml) array }
+    class LeitorNfseAbrasf { +ler(DocumentoXml) array }
+    NotaFiscalXml ..> DocumentoXml : carrega
+    NotaFiscalXml ..> FabricaLeitorNotaFiscal : pede o leitor
+    FabricaLeitorNotaFiscal ..> LeitorNotaFiscal : cria
+    LeitorNotaFiscal <|-- LeitorNfe
+    LeitorNotaFiscal <|-- LeitorNfseNacional
+    LeitorNotaFiscal <|-- LeitorNfseAbrasf

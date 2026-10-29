@@ -406,7 +406,7 @@ final class DadosFicticios
     private static function pdfNota(string $titulo, string $quem, float $valor, string $data, string $chave, string $desc): string
     {
         $p = new PdfWriter(); $p->addPage();
-        $p->rect(40, 40, 515, 60, '#282A5C');
+        $p->rect(40, 40, 515, 60, '#0F213D');
         $p->font(true, 18); $p->text(56, 54, $titulo, '#FFFFFF');
         $p->font(false, 10); $p->text(56, 80, 'DOCUMENTO FICTÍCIO — gerado para testes do OAF Controle Financeiro', '#C9A55F');
         $y = 130;

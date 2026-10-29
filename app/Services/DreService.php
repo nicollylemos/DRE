@@ -4,6 +4,9 @@ namespace App\Services;
 use App\Core\Database;
 use App\Models\Caixa;
 use App\Models\Transacao;
+use App\Services\Dre\AgrupamentoDre;
+use App\Services\Dre\EstrategiasDre;
+use App\Services\Dre\RegimeDre;
 
 /**
  * Cálculos do DRE, Dashboard e Fluxo de Caixa.
@@ -131,31 +134,15 @@ final class DreService
     }
 
     // ─── Demonstrativo completo (tela DRE) ──────────────────────────────────
-    public const AGRUPAMENTOS = ['categoria' => 'Categoria', 'grupo' => 'Grupo / conta', 'centro' => 'Centro de custo'];
-    public const REGIMES = ['competencia' => 'Competência (data do lançamento)', 'caixa' => 'Caixa (só o que foi pago/recebido)'];
-
-    private static function movimentos(int $ano, string $regime): array
-    {
-        if ($regime === 'caixa') {
-            return Database::all("SELECT tipo, COALESCE(data_pagamento, data) AS data, valor, taxa_mdr, grupo, conta_nome, categoria_nome, centro_custo_nome
-                                  FROM transactions WHERE status='quitado' AND YEAR(COALESCE(data_pagamento, data))=?", [$ano]);
-        }
-        return Database::all('SELECT tipo, data, valor, taxa_mdr, grupo, conta_nome, categoria_nome, centro_custo_nome FROM transactions WHERE YEAR(data)=?', [$ano]);
-    }
-
-    private static function chave(array $t, string $agrupar): string
-    {
-        if ($agrupar === 'grupo') return trim(($t['grupo'] ?: 'Sem grupo') . ($t['conta_nome'] ? ' — ' . $t['conta_nome'] : ''));
-        if ($agrupar === 'centro') return $t['centro_custo_nome'] ?: 'Sem centro de custo';
-        return $t['categoria_nome'] ?: 'Sem categoria';
-    }
+    // Regime (competência/caixa) e agrupamento (categoria/grupo/centro) são Strategies:
+    // ver app/Services/Dre/. O cálculo abaixo é o mesmo para qualquer combinação.
 
     /** Totais anuais por item (pra comparação com o ano anterior). */
-    private static function totaisAno(int $ano, string $regime, string $agrupar): array
+    private static function totaisAno(int $ano, RegimeDre $regime, AgrupamentoDre $agrupamento): array
     {
         $out = ['receita_bruta' => 0.0, 'deducoes' => 0.0, 'despesas' => 0.0, 'itens' => []];
-        foreach (self::movimentos($ano, $regime) as $t) {
-            $k = $t['tipo'] . '|' . self::chave($t, $agrupar);
+        foreach ($regime->movimentos($ano) as $t) {
+            $k = $t['tipo'] . '|' . $agrupamento->item($t);
             $out['itens'][$k] = ($out['itens'][$k] ?? 0) + (float) $t['valor'];
             if ($t['tipo'] === 'income') { $out['receita_bruta'] += (float) $t['valor']; $out['deducoes'] += (float) $t['taxa_mdr']; }
             else $out['despesas'] += (float) $t['valor'];
@@ -165,13 +152,15 @@ final class DreService
 
     public static function demonstrativo(int $ano, string $agrupar = 'categoria', string $regime = 'competencia'): array
     {
-        if (!isset(self::AGRUPAMENTOS[$agrupar])) $agrupar = 'categoria';
-        if (!isset(self::REGIMES[$regime])) $regime = 'competencia';
+        $estrategiaRegime = EstrategiasDre::regime($regime);
+        $estrategiaAgrup = EstrategiasDre::agrupamento($agrupar);
+        $regime = $estrategiaRegime->chave();
+        $agrupar = $estrategiaAgrup->chave();
         $zero = array_fill(0, 12, 0.0);
         $rec = []; $desp = []; $bruta = $zero; $ded = $zero; $totDesp = $zero;
-        foreach (self::movimentos($ano, $regime) as $t) {
+        foreach ($estrategiaRegime->movimentos($ano) as $t) {
             $i = mes_de($t['data']) - 1; $v = (float) $t['valor'];
-            $k = self::chave($t, $agrupar);
+            $k = $estrategiaAgrup->item($t);
             if ($t['tipo'] === 'income') {
                 $rec[$k] = $rec[$k] ?? $zero; $rec[$k][$i] += $v;
                 $bruta[$i] += $v; $ded[$i] += (float) $t['taxa_mdr'];
@@ -184,7 +173,7 @@ final class DreService
         $liq = $sub($bruta, $ded);
         $res = $sub($liq, $totDesp);
         $liqTotal = array_sum($liq);
-        $ant = self::totaisAno($ano - 1, $regime, $agrupar);
+        $ant = self::totaisAno($ano - 1, $estrategiaRegime, $estrategiaAgrup);
         $antLiq = $ant['receita_bruta'] - $ant['deducoes'];
 
         $cores = [];
@@ -213,7 +202,8 @@ final class DreService
         $margem = array_map(fn($r, $l) => $l != 0.0 ? $r / $l : null, $res, $liq);
         return [
             'ano' => $ano, 'agrupar' => $agrupar, 'regime' => $regime,
-            'agrupamentos' => self::AGRUPAMENTOS, 'regimes' => self::REGIMES,
+            'agrupamentos' => EstrategiasDre::rotulos(EstrategiasDre::agrupamentos()),
+            'regimes' => EstrategiasDre::rotulos(EstrategiasDre::regimes()),
             'meses' => MESES_CURTOS, 'linhas' => $linhas,
             'margem' => ['valores' => $margem, 'total' => $liqTotal != 0.0 ? array_sum($res) / $liqTotal : null],
             'tem_anterior' => $ant['receita_bruta'] > 0 || $ant['despesas'] > 0,

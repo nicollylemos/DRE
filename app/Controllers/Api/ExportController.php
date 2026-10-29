@@ -4,6 +4,7 @@ namespace App\Controllers\Api;
 use App\Core\Controller;
 use App\Core\Database;
 use App\Core\Response;
+use App\Services\Dre\EstrategiasDre;
 use App\Services\DreService;
 use App\Services\Spreadsheet\PdfWriter;
 use App\Services\Spreadsheet\XlsxWriter;
@@ -99,7 +100,7 @@ class ExportController extends Controller
         $p = new PdfWriter(); $p->addPage();
         $p->font(true, 17); $p->textCenter(46, 'DRE — Demonstrativo do Resultado do Exercício');
         $p->font(false, 10);
-        $p->textCenter(70, "Exercício $y  ·  Regime: " . ($dem['regime'] === 'caixa' ? 'caixa' : 'competência') . '  ·  Agrupado por: ' . mb_strtolower(DreService::AGRUPAMENTOS[$dem['agrupar']]), '#666666');
+        $p->textCenter(70, "Exercício $y  ·  Regime: " . ($dem['regime'] === 'caixa' ? 'caixa' : 'competência') . '  ·  Agrupado por: ' . mb_strtolower(EstrategiasDre::agrupamento($dem['agrupar'])->rotulo()), '#666666');
         $p->line(50, 90, 545, 90);
         $yy = 104;
         $p->font(true, 8.5);

@@ -2,7 +2,7 @@
 
 Sistema de controle financeiro com DRE, fluxo de caixa, calendário de contas, cadastros, importação de planilhas e controle de acesso por usuário.
 
-**Versão 3.1.3 (out/2026)** — aparece na tela de login (constante `APP_VERSION` em `app/bootstrap.php`).
+**Versão 3.3.0 (out/2026)** — aparece na tela de login (constante `APP_VERSION` em `app/bootstrap.php`).
 
 PHP puro, **sem Composer e sem `npm install`**: Excel, PDF e leitura de planilhas são feitos em PHP.
 
@@ -102,6 +102,10 @@ client_max_body_size 25M;
 Configuração completa (a mesma usada nos testes de carga) em `docs/nginx.conf.exemplo`.
 
 ---
+
+## 🧩 Padrões de projeto
+
+Strategy (regime e agrupamento do DRE), Factory (leitura do XML das notas) e Observer (eventos dos lançamentos), além de MVC, Front Controller e Singleton. Explicação e diagrama de classes em Mermaid em `docs/padroes/`.
 
 ## 🧪 Dados fictícios para testar
 

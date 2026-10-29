@@ -8,30 +8,38 @@
     </div>
   </header>
 
-  <div class="kpis">
-    <div class="kpi"><span><i class="kd pos"></i>Receita bruta</span><strong id="dash-rec">—</strong><small id="dash-rec-sub"></small></div>
-    <div class="kpi"><span><i class="kd neg"></i>Despesas</span><strong id="dash-desp">—</strong><small id="dash-desp-sub"></small></div>
-    <div class="kpi saldo"><span>Lucro / prejuízo líquido</span><strong id="dash-lucro">—</strong><small id="dash-lucro-sub"></small></div>
-    <div class="kpi"><span><i class="kd warn"></i>Margem líquida</span><strong id="dash-margem">—</strong><small id="dash-margem-sub">lucro ÷ receita líquida</small></div>
+  <!-- Destaque: o resultado do ano + os números que formam ele -->
+  <div class="card dash-hero">
+    <div class="hero-main">
+      <span class="hero-lbl" id="dash-lucro-sub">Resultado do exercício</span>
+      <strong class="hero-num" id="dash-lucro">—</strong>
+      <span class="hero-margem">Margem líquida <b id="dash-margem">—</b></span>
+    </div>
+    <div class="hero-stats">
+      <div><span><i class="kd pos"></i>Receita bruta</span><strong id="dash-rec">—</strong><small id="dash-rec-sub"></small></div>
+      <div><span><i class="kd neg"></i>Despesas</span><strong id="dash-desp">—</strong><small id="dash-desp-sub"></small></div>
+    </div>
   </div>
-  <div class="kpis mini">
-    <div class="kpi"><span>A receber (em aberto)</span><strong class="pos" id="dash-areceber">—</strong></div>
-    <div class="kpi"><span>A pagar (em aberto)</span><strong class="neg" id="dash-apagar">—</strong></div>
-    <div class="kpi"><span>Vencidos</span><strong id="dash-vencidos">—</strong><small id="dash-vencidos-sub"></small></div>
-    <div class="kpi"><span>Saldo em caixas / bancos</span><strong id="dash-saldo-cx">—</strong></div>
+
+  <!-- Situação de agora: uma faixa só, sem caixinhas -->
+  <div class="card dash-strip">
+    <div><span>A receber</span><strong class="pos" id="dash-areceber">—</strong><small>em aberto</small></div>
+    <div><span>A pagar</span><strong class="neg" id="dash-apagar">—</strong><small>em aberto</small></div>
+    <div><span>Vencidos</span><strong id="dash-vencidos">—</strong><small id="dash-vencidos-sub"></small></div>
+    <div><span>Saldo em caixas / bancos</span><strong id="dash-saldo-cx">—</strong><small>hoje</small></div>
   </div>
 
   <div class="dash-grid">
     <div class="card">
-      <header class="card-head"><h2>Resultado do exercício</h2><?php if (Auth::pode('dre')): ?><a class="link" href="<?= e(url('dre')) ?>">Ver DRE completo →</a><?php endif; ?></header>
-      <dl class="dre-lines" id="dash-dre"></dl>
-      <div class="compara" id="dash-compara"></div>
-    </div>
-    <div class="card">
-      <header class="card-head"><h2>Receitas x despesas por mês</h2>
+      <header class="card-head"><h2>Receitas x despesas</h2>
         <div class="legend"><span><i style="background:var(--c-rec)"></i>Receita líquida</span><span><i style="background:var(--c-desp)"></i>Despesas</span></div>
       </header>
       <div class="chart" id="dash-chart"></div>
+    </div>
+    <div class="card">
+      <header class="card-head"><h2>Resumo do DRE</h2><?php if (Auth::pode('dre')): ?><a class="link" href="<?= e(url('dre')) ?>">Ver completo →</a><?php endif; ?></header>
+      <dl class="dre-lines" id="dash-dre"></dl>
+      <div class="compara" id="dash-compara"></div>
     </div>
   </div>
 

@@ -1,0 +1,34 @@
+---
+title: Observer — eventos dos lançamentos
+---
+classDiagram
+    direction LR
+    class TransacaoController {
+        +store() array
+        +destroy(id) array
+    }
+    class Despachante {
+        <<Subject>>
+        +ouvir(nomeEvento, Ouvinte)$ void
+        +disparar(Evento)$ void
+    }
+    class Evento {
+        +string LANCAMENTO_CRIADO$
+        +string LANCAMENTO_APAGADO$
+        +nome : string
+        +dados : array
+    }
+    class Ouvinte {
+        <<interface>>
+        +ouvir(Evento) void
+    }
+    class VincularNotaFiscal { +ouvir(Evento) void }
+    class DesvincularNotasFiscais { +ouvir(Evento) void }
+    class NotaFiscal { +desvincularLancamento(id)$ void }
+    TransacaoController ..> Despachante : dispara
+    TransacaoController ..> Evento : cria
+    Despachante "1" o-- "*" Ouvinte : avisa
+    Ouvinte <|.. VincularNotaFiscal
+    Ouvinte <|.. DesvincularNotasFiscais
+    VincularNotaFiscal ..> NotaFiscal
+    DesvincularNotasFiscais ..> NotaFiscal

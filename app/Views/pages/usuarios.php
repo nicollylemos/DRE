@@ -33,8 +33,11 @@
 
   <!-- NÍVEIS -->
   <div class="tab-pane hidden" data-pane="perfis">
-    <p class="foot-note" style="margin:0 0 14px">Cada tela pode ficar <b>sem acesso</b>, só para <b>ver</b> (consulta) ou com <b>editar</b> (criar, alterar e apagar). O bloqueio vale no menu e no servidor.</p>
-    <div class="perfis-grid" id="perfis-grid"></div>
+    <div class="niv-topo">
+      <p>O que cada nível pode fazer em cada tela. O bloqueio vale no menu e no servidor.</p>
+      <div class="niv-leg"><span><i class="nv-i e"></i>Editar</span><span><i class="nv-i v"></i>Só ver</span><span><i class="nv-i n"></i>Sem acesso</span></div>
+    </div>
+    <div class="table-card"><div class="table-scroll" id="perfis-grid"></div></div>
   </div>
 </section>
 

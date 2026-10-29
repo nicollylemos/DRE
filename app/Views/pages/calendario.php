@@ -1,7 +1,7 @@
 <?php use App\Core\Auth; use App\Core\View; ?>
 <section class="page active" id="page-calendario">
   <header class="page-head">
-    <div><h1>Calendário</h1><p>Contas a pagar e a receber pela data de vencimento. Clique num dia para ver os títulos e dar baixa.</p></div>
+    <div><h1>Calendário</h1><p>Todos os lançamentos pelo vencimento (ou pela data de pagamento, se não tiver vencimento). Clique num dia para ver e dar baixa.</p></div>
     <?php if (Auth::podeEditar('lancamentos')): ?>
     <button class="btn btn-gold" type="button" id="cal-novo"><svg viewBox="0 0 24 24" class="ico-btn"><path d="M12 5v14M5 12h14"/></svg>Nova conta</button>
     <?php endif; ?>

@@ -1,0 +1,39 @@
+---
+title: Strategy — regime e agrupamento do DRE
+---
+classDiagram
+    direction LR
+    class DreService {
+        <<Context>>
+        +demonstrativo(ano, agrupar, regime)$ array
+        -totaisAno(ano, RegimeDre, AgrupamentoDre)$ array
+    }
+    class EstrategiasDre {
+        +regime(chave)$ RegimeDre
+        +agrupamento(chave)$ AgrupamentoDre
+    }
+    class RegimeDre {
+        <<interface>>
+        +chave() string
+        +rotulo() string
+        +movimentos(ano) array
+    }
+    class RegimeCompetencia { +movimentos(ano) array }
+    class RegimeCaixa { +movimentos(ano) array }
+    class AgrupamentoDre {
+        <<interface>>
+        +chave() string
+        +rotulo() string
+        +item(lancamento) string
+    }
+    class AgrupamentoPorCategoria { +item(lancamento) string }
+    class AgrupamentoPorGrupoConta { +item(lancamento) string }
+    class AgrupamentoPorCentroCusto { +item(lancamento) string }
+    DreService ..> EstrategiasDre : escolhe
+    DreService --> RegimeDre
+    DreService --> AgrupamentoDre
+    RegimeDre <|.. RegimeCompetencia
+    RegimeDre <|.. RegimeCaixa
+    AgrupamentoDre <|.. AgrupamentoPorCategoria
+    AgrupamentoDre <|.. AgrupamentoPorGrupoConta
+    AgrupamentoDre <|.. AgrupamentoPorCentroCusto

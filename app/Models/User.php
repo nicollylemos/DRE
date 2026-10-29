@@ -39,7 +39,7 @@ class User extends Model
     public static function listar(): array
     {
         $rows = Database::all('SELECT u.id, u.username, u.nome, u.email, u.role, u.perfil_id, u.ativo, u.deve_trocar_senha, u.tentativas_falhas,
-                                      u.bloqueado_ate, u.ultimo_login, u.ultimo_ip, u.foto_path, u.created_at,
+                                      u.bloqueado_ate, u.ultimo_login, u.ultimo_ip, u.foto_path, u.created_at, u.cargo, u.setor,
                                       p.nome AS perfil_nome, p.is_admin AS perfil_admin
                                FROM users u LEFT JOIN perfis p ON p.id=u.perfil_id ORDER BY u.ativo DESC, u.nome, u.username');
         $agora = date('Y-m-d H:i:s');

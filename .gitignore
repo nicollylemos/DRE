@@ -9,3 +9,5 @@ storage/schema_version
 storage/notas/*
 !storage/notas/.gitkeep
 storage/mail/*
+storage/comprovantes/*
+!storage/comprovantes/.gitkeep

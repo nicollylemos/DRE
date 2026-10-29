@@ -14,7 +14,7 @@ use App\Core\Permissions;
  */
 final class Migrator
 {
-    public const VERSAO = 9;
+    public const VERSAO = 10;
 
     public static function tabelas(): array
     {
@@ -48,6 +48,11 @@ final class Migrator
                 foto_path         VARCHAR(255) NULL,
                 foto_nome         VARCHAR(255) NULL,
                 permissoes        TEXT NULL,
+                cargo             VARCHAR(100) NULL,
+                setor             VARCHAR(100) NULL,
+                telefone          VARCHAR(20) NULL,
+                ramal             VARCHAR(10) NULL,
+                whatsapp          VARCHAR(20) NULL,
                 termos_versao     VARCHAR(20) NULL,
                 termos_aceitos_em DATETIME NULL,
                 created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -150,6 +155,8 @@ final class Migrator
                 valor_liquido        DECIMAL(15,2),
                 observacoes          TEXT,
                 importacao_id        INT NULL,
+                comprovante_path     VARCHAR(255) NULL,
+                comprovante_nome     VARCHAR(255) NULL,
                 user_id              INT,
                 created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_tx_data (data),
@@ -242,7 +249,10 @@ final class Migrator
                                    'bloqueado_ate' => 'DATETIME NULL AFTER tentativas_falhas', 'ultimo_login' => 'DATETIME NULL AFTER bloqueado_ate',
                                    'ultimo_ip' => 'VARCHAR(64) NULL AFTER ultimo_login', 'senha_alterada_em' => 'DATETIME NULL AFTER ultimo_ip',
                                    'foto_path' => 'VARCHAR(255) NULL', 'foto_nome' => 'VARCHAR(255) NULL', 'permissoes' => 'TEXT NULL',
-                                   'termos_versao' => 'VARCHAR(20) NULL', 'termos_aceitos_em' => 'DATETIME NULL'],
+                                   'termos_versao' => 'VARCHAR(20) NULL', 'termos_aceitos_em' => 'DATETIME NULL',
+                                   // v10: dados profissionais no "Meu perfil" (só de trabalho — LGPD: nada de dado pessoal)
+                                   'cargo' => 'VARCHAR(100) NULL', 'setor' => 'VARCHAR(100) NULL', 'telefone' => 'VARCHAR(20) NULL',
+                                   'ramal' => 'VARCHAR(10) NULL', 'whatsapp' => 'VARCHAR(20) NULL'],
             'formas_pagamento' => ['banco' => 'VARCHAR(100) NULL', 'agencia' => 'VARCHAR(30) NULL', 'tipo' => 'VARCHAR(20) NULL AFTER nome',
                                    'ativo' => 'TINYINT(1) NOT NULL DEFAULT 1'],
             'logs'             => ['dados' => 'MEDIUMTEXT NULL AFTER ip'],
@@ -250,7 +260,9 @@ final class Migrator
             'caixas'           => ['tipo' => "VARCHAR(20) NOT NULL DEFAULT 'banco' AFTER nome", 'banco' => 'VARCHAR(100) NULL AFTER tipo',
                                    'agencia' => 'VARCHAR(30) NULL AFTER banco', 'conta' => 'VARCHAR(30) NULL AFTER agencia', 'observacoes' => 'VARCHAR(255) NULL'],
             'transactions'     => ['categoria_id' => 'INT NULL AFTER grupo', 'categoria_nome' => 'VARCHAR(150) NULL AFTER categoria_id',
-                                   'importacao_id' => 'INT NULL AFTER observacoes'],
+                                   'importacao_id' => 'INT NULL AFTER observacoes',
+                                   // v10: comprovante de pagamento (PDF ou imagem) anexado ao lançamento
+                                   'comprovante_path' => 'VARCHAR(255) NULL', 'comprovante_nome' => 'VARCHAR(255) NULL'],
             'parceiros'        => ['observacoes' => 'TEXT NULL', 'ativo' => 'TINYINT(1) NOT NULL DEFAULT 1'],
             'fornecedores'     => ['razao_social' => 'VARCHAR(255) NULL AFTER nome', 'whatsapp' => 'VARCHAR(30) NULL', 'responsavel' => 'VARCHAR(150) NULL',
                                    'contrato_path' => 'VARCHAR(255) NULL', 'contrato_nome' => 'VARCHAR(255) NULL', 'ativo' => 'TINYINT(1) NOT NULL DEFAULT 1',

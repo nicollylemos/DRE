@@ -85,7 +85,7 @@ final class Upload
         if (!$path) return;
         $rel = ltrim($path, '/');
         if (strpos($rel, '..') !== false) return;
-        if (strpos($rel, 'uploads/') !== 0 && strpos($rel, 'storage/notas/') !== 0) return;
+        if (strpos($rel, 'uploads/') !== 0 && strpos($rel, 'storage/notas/') !== 0 && strpos($rel, 'storage/comprovantes/') !== 0) return;
         $full = ROOT_DIR . '/' . $rel;
         if (is_file($full)) @unlink($full);
     }

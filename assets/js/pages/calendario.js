@@ -85,32 +85,31 @@
       if (!cal.dia && x.venc !== diaAnt) { diaAnt = x.venc; const dt = new Date(x.venc + 'T12:00'); html += `<div class="ag-day">${dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}</div>`; }
       const st = x.status === 'quitado' ? '<span class="st on">Quitado</span>' : x.vencido ? '<span class="st late">Vencido</span>' : '<span class="st open">Em aberto</span>';
       const quem = [x.cliente_fornecedor, x.categoria_nome].filter(Boolean).join(' · ') || (x.tipo === 'income' ? 'A receber' : 'A pagar');
-      const btn = ed && x.status === 'em_aberto' ? `<button type="button" class="btn btn-ghost xs ag-baixa" data-id="${x.id}" title="Dar baixa hoje">✓ Baixa</button>` : '';
+      const btn = ed ? `<div class="ag-acts">${x.status === 'em_aberto' ? `<button type="button" class="btn btn-ghost xs ag-baixa" data-id="${x.id}" title="Dar baixa hoje">✓ Baixa</button>` : ''}<button type="button" class="ag-apagar" data-id="${x.id}" title="Apagar (lançado por engano)" aria-label="Apagar"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button></div>` : '';
+      const clip = x.tem_comprovante ? ` <span class="clip" title="Comprovante anexado"><svg viewBox="0 0 24 24"><path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/></svg></span>` : '';
       html += `<div class="ag-item ${x.status === 'quitado' ? 'done' : ''}" data-id="${x.id}" tabindex="0">
         <span class="bar-s ${x.tipo === 'income' ? 'in' : 'out'}"></span>
-        <div class="tx"><b>${esc(x.descricao) || '<span class="dim">Sem descrição</span>'}</b><small>${esc(quem)}</small></div>
+        <div class="tx"><b>${esc(x.descricao) || '<span class="dim">Sem descrição</span>'}${clip}</b><small>${esc(quem)}</small></div>
         <div class="vl ${x.tipo === 'income' ? 'pos' : 'neg'}">${x.tipo === 'income' ? '+' : '−'} ${fmtBRL(x.valor)}<div>${st}</div></div>${btn}</div>`;
     });
     $('agenda-itens').innerHTML = html;
     const porId = id => cal.itens.find(x => x.id === Number(id));
     $('agenda-itens').querySelectorAll('.ag-item').forEach(el => {
       const abre = () => verTitulo(porId(el.dataset.id));
-      el.onclick = e => { if (!e.target.closest('.ag-baixa')) abre(); };
+      el.onclick = e => { if (!e.target.closest('.ag-acts')) abre(); };
       el.onkeydown = e => { if (e.key === 'Enter') abre(); };
     });
     $('agenda-itens').querySelectorAll('.ag-baixa').forEach(b => b.onclick = () => LancForm.baixar(porId(b.dataset.id), true, carregar));
+    $('agenda-itens').querySelectorAll('.ag-apagar').forEach(b => b.onclick = () => LancForm.apagar(porId(b.dataset.id), carregar));
   }
 
   function verTitulo(x) {
-    const botoes = [];
-    if (ed && x.status === 'em_aberto') botoes.push({ label: 'Dar baixa', cls: 'btn-gold', fn: () => { fecharModal('modal-view'); LancForm.baixar(x, true, carregar); } });
-    if (ed && x.status === 'quitado') botoes.push({ label: 'Reabrir', cls: 'btn-ghost', fn: () => { fecharModal('modal-view'); LancForm.baixar(x, false, carregar); } });
-    if (ed) botoes.push({ label: 'Editar', fn: () => { fecharModal('modal-view'); LancForm.abrir(x, {}, carregar); } });
+    const botoes = ed ? LancForm.botoes(x, carregar) : [];
     mostrarDetalhes(x.descricao || 'Título', `${x.tipo === 'income' ? 'Conta a receber' : 'Conta a pagar'} · ${fmtBRL(x.valor)}`, [
-      ['Vencimento', fmtData(x.venc)], ['Situação', x.status === 'quitado' ? `Quitado em ${fmtData(x.data_pagamento)}` : x.vencido ? 'Vencido' : 'Em aberto'],
+      [x.data_vencimento ? 'Vencimento' : 'Data', fmtData(x.venc)], ['Situação', x.status === 'quitado' ? `Quitado em ${fmtData(x.data_pagamento)}` : x.vencido ? 'Vencido' : 'Em aberto'],
       [x.tipo === 'income' ? 'Cliente' : 'Fornecedor', x.cliente_fornecedor], ['Categoria', x.categoria_nome],
       ['Forma de pagamento', x.forma_pagamento_nome], ['Caixa / Banco', x.caixa_nome], ['Data do lançamento', fmtData(x.data)],
-      ['Observações', x.observacoes],
+      ['Observações', x.observacoes], LancForm.linhaComprovante(x),
     ], botoes);
   }
 

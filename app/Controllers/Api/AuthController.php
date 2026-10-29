@@ -138,7 +138,18 @@ class AuthController extends Controller
         $atual = User::find((int) $u['id']);
         $email = str_or_null($this->input('email'));
         if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new HttpException(400, 'E-mail inválido');
-        $dados = ['nome' => cut(str_or_null($this->input('nome')), 150), 'email' => cut($email, 150)];
+        $fone = function (string $campo, string $rotulo): ?string {
+            $d = only_digits((string) $this->input($campo, ''));
+            if ($d === '') return null;
+            if (strlen($d) < 10 || strlen($d) > 11) throw new HttpException(400, "$rotulo inválido: use DDD + número (10 ou 11 dígitos)");
+            return $d;
+        };
+        $ramal = only_digits((string) $this->input('ramal', ''));
+        if (strlen($ramal) > 6) throw new HttpException(400, 'Ramal: até 6 números');
+        $dados = ['nome' => cut(str_or_null($this->input('nome')), 150), 'email' => cut($email, 150),
+                  'cargo' => cut(str_or_null($this->input('cargo')), 100), 'setor' => cut(str_or_null($this->input('setor')), 100),
+                  'telefone' => $fone('telefone', 'Telefone comercial'), 'ramal' => $ramal !== '' ? $ramal : null,
+                  'whatsapp' => $fone('whatsapp', 'WhatsApp comercial')];
         if ($foto = Upload::salvar('foto', 'perfil', Upload::IMAGEM, 8 * 1024 * 1024)) {
             Upload::apagar($atual['foto_path']);
             $dados['foto_path'] = $foto['path']; $dados['foto_nome'] = $foto['nome'];

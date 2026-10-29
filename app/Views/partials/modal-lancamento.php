@@ -17,14 +17,23 @@
         <label class="field"><span>Caixa / Banco</span><select id="tx-caixa"></select></label>
         <label class="field"><span>Centro de custo</span><select id="tx-centro"></select></label>
         <label class="field"><span>Situação</span><select id="tx-status"><option value="quitado">Quitado</option><option value="em_aberto">Em aberto</option></select></label>
-        <label class="field"><span>Vencimento</span><input type="date" id="tx-venc"/></label>
-        <label class="field"><span>Data de pagamento</span><input type="date" id="tx-pag"/></label>
+        <label class="field"><span>Vencimento <b class="obr hidden" id="tx-venc-obr">*</b></span><input type="date" id="tx-venc"/></label>
+        <label class="field"><span>Data de pagamento <b class="obr" id="tx-pag-obr">*</b></span><input type="date" id="tx-pag"/></label>
         <label class="field"><span>Grupo / Conta</span><select id="tx-conta"></select></label>
         <label class="field span2"><span>Observações</span><input type="text" id="tx-obs" placeholder="Notas adicionais"/></label>
+        <div class="field span2"><span>Comprovante <small class="opc">PDF ou foto do pagamento · até 10 MB</small></span>
+          <div class="tx-comp">
+            <label class="btn btn-ghost" for="tx-comp-file"><svg viewBox="0 0 24 24" class="ico-btn"><path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/></svg><span id="tx-comp-btn">Anexar comprovante</span></label>
+            <input type="file" id="tx-comp-file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/*" hidden/>
+            <span class="tx-comp-nome" id="tx-comp-nome"></span>
+            <button type="button" class="btn btn-ghost xs danger hidden" id="tx-comp-remover">Remover</button>
+          </div>
+        </div>
       </div>
       <div class="taxa hidden" id="tx-taxa">Taxa da forma de pagamento: <strong id="tx-taxa-v"></strong> · Valor líquido: <strong id="tx-liq-v"></strong></div>
       <div class="form-error" id="tx-error"></div>
     </form>
-    <footer class="modal-foot"><button class="btn btn-ghost" data-close type="button">Cancelar</button><button class="btn btn-navy" id="btn-salvar-tx" type="button">Salvar</button></footer>
+    <footer class="modal-foot spread"><div><button class="btn btn-ghost danger hidden" id="btn-apagar-tx" type="button">Apagar lançamento</button></div><div><button class="btn btn-ghost" data-close type="button">Cancelar</button><button class="btn btn-navy" id="btn-salvar-tx" type="button">Salvar</button></div></footer>
   </div>
 </div>
+<input type="file" id="tx-comp-picker" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/*" hidden/>

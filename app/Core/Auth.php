@@ -116,6 +116,9 @@ final class Auth
         return [
             'id' => (int) $u['id'], 'username' => $u['username'], 'nome' => $u['nome'] ?? null,
             'email' => $u['email'] ?? null,
+            'cargo' => $u['cargo'] ?? null, 'setor' => $u['setor'] ?? null,
+            'telefone' => $u['telefone'] ?? null, 'ramal' => $u['ramal'] ?? null, 'whatsapp' => $u['whatsapp'] ?? null,
+            'senha_alterada_em' => $u['senha_alterada_em'] ?? null,
             'foto_path' => public_path($u['foto_path'] ?? null),
             'perfil_id' => $u['perfil_id'] !== null ? (int) $u['perfil_id'] : null,
             'perfil_nome' => $u['perfil_nome'] ?? ($admin ? 'Administrador' : 'Sem nível'),

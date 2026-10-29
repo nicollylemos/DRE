@@ -32,6 +32,7 @@ class Transacao extends Model
         $t['valor_liquido'] = $t['valor_liquido'] !== null ? (float) $t['valor_liquido'] : null;
         $t['categoria_id'] = $t['categoria_id'] !== null ? (int) $t['categoria_id'] : null;
         $t['importacao_id'] = isset($t['importacao_id']) && $t['importacao_id'] !== null ? (int) $t['importacao_id'] : null;
+        if (array_key_exists('comprovante_path', $t)) { $t['tem_comprovante'] = !empty($t['comprovante_path']); unset($t['comprovante_path']); }
         if (array_key_exists('nf_id', $t)) { $t['nf_id'] = $t['nf_id'] !== null ? (int) $t['nf_id'] : null; $t['nf_qtd'] = (int) ($t['nf_qtd'] ?? 0); }
         return $t + [
             'type' => $t['tipo'], 'date' => substr((string) $t['data'], 0, 10), 'amount' => (float) $t['valor'],
@@ -137,20 +138,20 @@ class Transacao extends Model
     }
 
     /**
-     * Agenda de vencimentos do mês (calendário): o que tem vencimento no mês (quitado
-     * ou não) e o que está em aberto sem vencimento (aí vale a data do lançamento).
+     * Agenda do mês (calendário): todos os lançamentos. Cada um cai na data de vencimento;
+     * sem vencimento, na data de pagamento; sem as duas, na data do lançamento.
      */
     public static function agenda(int $ano, int $mes): array
     {
         $rows = Database::all("SELECT id, tipo, descricao, valor, status, cliente_fornecedor, categoria_id, categoria_nome, forma_pagamento_nome, caixa_nome,
                                       centro_custo_nome, grupo, conta_nome, observacoes, data, data_vencimento, data_pagamento,
-                                      COALESCE(data_vencimento, data) AS venc
+                                      comprovante_nome, (comprovante_path IS NOT NULL) AS tem_comprovante,
+                                      COALESCE(data_vencimento, data_pagamento, data) AS venc
                                FROM transactions
-                               WHERE (data_vencimento IS NOT NULL OR status='em_aberto')
-                                 AND YEAR(COALESCE(data_vencimento, data))=? AND MONTH(COALESCE(data_vencimento, data))=?
-                               ORDER BY venc, tipo, id", [$ano, $mes]);
+                               WHERE COALESCE(data_vencimento, data_pagamento, data) BETWEEN ? AND LAST_DAY(?)
+                               ORDER BY venc, tipo, id", [$ini = sprintf('%04d-%02d-01', $ano, $mes), $ini]);
         $hoje = date('Y-m-d');
-        return array_map(fn($r) => ['id' => (int) $r['id'], 'valor' => (float) $r['valor'],
+        return array_map(fn($r) => ['id' => (int) $r['id'], 'valor' => (float) $r['valor'], 'tem_comprovante' => (bool) $r['tem_comprovante'],
             'categoria_id' => $r['categoria_id'] !== null ? (int) $r['categoria_id'] : null,
             'venc' => substr((string) $r['venc'], 0, 10),
             'vencido' => $r['status'] === 'em_aberto' && substr((string) $r['venc'], 0, 10) < $hoje] + $r, $rows);

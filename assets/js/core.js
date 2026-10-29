@@ -78,7 +78,7 @@ const pode = tela => nivel(tela) >= 1;
 const podeEditar = tela => nivel(tela) >= 2;
 
 // ─── MODAIS ───────────────────────────────────────────────────────────────────
-function abrirModal(id) { $(id).classList.remove('hidden'); const f = $(id).querySelector('input:not([type=hidden]):not([hidden]):not([type=checkbox]),select'); if (f) setTimeout(() => f.focus(), 60); }
+function abrirModal(id) { $(id).classList.remove('hidden'); const f = $(id).querySelector('input:not([type=hidden]):not([hidden]):not([type=checkbox]),select'); if (f) setTimeout(() => f.focus({ preventScroll: true }), 60); }
 function fecharModal(id) { $(id).classList.add('hidden'); }
 function ligarModais() {
   document.querySelectorAll('.modal').forEach(m => {
@@ -114,9 +114,10 @@ function mostrarDetalhes(titulo, sub, linhas, botoes = []) {
   $('view-title').textContent = titulo;
   $('view-sub').textContent = sub || '';
   $('view-body').innerHTML = linhas.filter(Boolean).map(([k, v, html]) => `<dt>${esc(k)}</dt><dd>${html ? v : (esc(v) || '—')}</dd>`).join('');
-  $('view-foot').innerHTML = '<button class="btn btn-ghost" type="button" data-close>Fechar</button>';
-  botoes.forEach(b => { const el = document.createElement('button'); el.type = 'button'; el.className = 'btn ' + (b.cls || 'btn-navy'); el.textContent = b.label; el.onclick = b.fn; $('view-foot').appendChild(el); });
-  $('view-foot').querySelector('[data-close]').onclick = () => fecharModal('modal-view');
+  // Com muitos botões o "Fechar" sai (o X do topo continua) pra caber tudo numa linha.
+  $('view-foot').innerHTML = botoes.length > 3 ? '' : '<button class="btn btn-ghost" type="button" data-close>Fechar</button>';
+  botoes.forEach(b => { const el = document.createElement('button'); el.type = 'button'; el.className = 'btn ' + (b.cls || 'btn-navy'); el.textContent = b.label; if (b.title) el.title = b.title; el.onclick = b.fn; $('view-foot').appendChild(el); });
+  const fx = $('view-foot').querySelector('[data-close]'); if (fx) fx.onclick = () => fecharModal('modal-view');
   abrirModal('modal-view');
 }
 
@@ -153,7 +154,7 @@ function ligarAbas(tabsId, onChange) {
 }
 
 // ─── AVATAR / PÍLULAS ────────────────────────────────────────────────────────
-const TONS = [['#E8EAF6', '#3A3D78'], ['#F6EEDC', '#8A6A2E'], ['#E3F1EA', '#25704A'], ['#F5E6EC', '#8B3A5A'], ['#E4EEF5', '#2F5E7E'], ['#EFE9F6', '#5B4690']];
+const TONS = [['#E8EDF5', '#1B3155'], ['#F6EEDC', '#8A6A2E'], ['#E3F1EA', '#25704A'], ['#F5E6EC', '#8B3A5A'], ['#E4EEF5', '#2F5E7E'], ['#EFE9F6', '#5B4690']];
 function iniciais(nome) {
   const p = String(nome || '?').trim().split(/\s+/).filter(w => w.length > 2 || /^[A-ZÀ-Ú]/.test(w));
   return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
@@ -174,6 +175,10 @@ function linkWhats(v) {
 const ICO = {
   Contrato: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
   Editar: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  'Ver comprovante': '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  'Anexar comprovante': '<path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/>',
+  'Trocar comprovante': '<path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/>',
+  'Remover comprovante': '<path d="M18 6 6 18M6 6l12 12"/>',
   Apagar: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
   Visualizar: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   'Dar baixa': '<path d="M20 6 9 17l-5-5"/>', Reabrir: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
@@ -370,6 +375,22 @@ const BANCOS = ['Itaú', 'Bradesco', 'Banco do Brasil', 'Caixa Econômica', 'San
     const fechado = document.documentElement.classList.toggle('menu-fechado');
     try { localStorage.setItem('dre.menu', fechado ? 'fechado' : 'aberto'); } catch (e) {}
   });
+  // Dica com o nome do item quando o menu está só com ícones. Fica fora do menu (position:fixed)
+  // para o menu poder rolar em telas baixas sem cortar a dica.
+  const dica = document.createElement('div'); dica.className = 'side-dica'; document.body.appendChild(dica);
+  const soIcones = () => getComputedStyle(document.querySelector('.side-lbl') || document.body).display === 'none' && innerWidth > 720;
+  const mostra = b => {
+    if (!soIcones()) return;
+    const r = b.getBoundingClientRect();
+    dica.textContent = b.dataset.label || b.title || '';
+    dica.style.top = (r.top + r.height / 2) + 'px'; dica.style.left = (r.right + 12) + 'px';
+    dica.classList.add('on');
+  };
+  document.querySelectorAll('.side-btn').forEach(b => {
+    b.addEventListener('mouseenter', () => mostra(b)); b.addEventListener('focus', () => mostra(b));
+    b.addEventListener('mouseleave', () => dica.classList.remove('on')); b.addEventListener('blur', () => dica.classList.remove('on'));
+  });
+  $('side-nav') && $('side-nav').addEventListener('scroll', () => dica.classList.remove('on'), { passive: true });
   // Mantém o item ativo visível no menu com rolagem
   const ativo = document.querySelector('.side-btn.active');
   if (ativo && ativo.scrollIntoView) ativo.scrollIntoView({ block: 'nearest' });
@@ -384,19 +405,33 @@ function renderAvatar(el, u) {
 (function perfil() {
   if (!$('btn-perfil')) return;
   let aba = 'dados';
-  ligarAbas('perfil-tabs', a => { aba = a; $('btn-salvar-perfil').textContent = a === 'senha' ? 'Trocar senha' : 'Salvar'; });
+  const lblSalvar = () => $('btn-salvar-perfil').querySelector('.lbl');
+  ligarAbas('perfil-tabs', a => { aba = a; lblSalvar().textContent = a === 'senha' ? 'Trocar senha' : 'Salvar'; });
   ligarForca('senha-nova', $('senha-forca'));
+  ['perfil-telefone', 'perfil-whatsapp'].forEach(id => ligarMascara(id, maskTel));
+  ligarMascara('perfil-ramal', v => soDigitos(v).slice(0, 6));
   $('perfil-trocar-foto').onclick = () => $('perfil-foto').click();
+  function cabecalho(u) {
+    $('perfil-titulo').textContent = u.nome || u.username;
+    $('perfil-username').textContent = '@' + u.username + (u.email ? ' · ' + u.email : '');
+    $('perfil-role').textContent = u.perfil_nome || '';
+    const cargo = [u.cargo, u.setor].filter(Boolean).join(' · ');
+    $('perfil-cargo-chip').textContent = cargo; $('perfil-cargo-chip').classList.toggle('hidden', !cargo);
+  }
   $('btn-perfil').addEventListener('click', () => {
     const u = user();
-    $('perfil-username').textContent = '@' + u.username;
-    $('perfil-role').textContent = u.perfil_nome || '';
-    $('perfil-nome').value = u.nome || ''; $('perfil-email').value = u.email || ''; $('perfil-foto').value = '';
+    cabecalho(u);
+    $('perfil-nome').value = u.nome || ''; $('perfil-email').value = u.email || '';
+    $('perfil-cargo').value = u.cargo || ''; $('perfil-setor').value = u.setor || '';
+    $('perfil-telefone').value = u.telefone ? maskTel(u.telefone) : ''; $('perfil-ramal').value = u.ramal || '';
+    $('perfil-whatsapp').value = u.whatsapp ? maskTel(u.whatsapp) : ''; $('perfil-foto').value = '';
     ['senha-atual', 'senha-nova', 'senha-conf'].forEach(id => $(id).value = '');
     $('perfil-error').textContent = ''; $('senha-error').textContent = '';
+    $('senha-info').textContent = u.senha_alterada_em ? `Sua senha foi alterada pela última vez em ${fmtDataHora(u.senha_alterada_em)}.` : 'Escolha uma senha que você não usa em outros sites.';
     $('senha-nova').dispatchEvent(new Event('input'));
     renderAvatar($('perfil-avatar'), u);
     if ($('perfil-aceite')) $('perfil-aceite').textContent = u.termos_aceitos_em ? ` (aceitos em ${fmtDataHora(u.termos_aceitos_em)}, versão ${u.termos_versao})` : '';
+    document.querySelector('#perfil-tabs button[data-tab="dados"]').click();
     abrirModal('modal-perfil');
   });
   $('perfil-foto').addEventListener('change', () => { const f = $('perfil-foto').files[0]; if (f) $('perfil-avatar').innerHTML = `<img src="${URL.createObjectURL(f)}" alt=""/>`; });
@@ -412,12 +447,15 @@ function renderAvatar(el, u) {
       const r = await api('auth/trocar-senha', 'POST', body);
       carregando(btn, false);
       if (r.error) { $('senha-error').textContent = r.error; return; }
+      APP.user = Object.assign(APP.user || {}, r);
       fecharModal('modal-perfil'); toast('Senha alterada');
       return;
     }
+    const tel = soDigitos($('perfil-telefone').value), wpp = soDigitos($('perfil-whatsapp').value);
+    if ((tel && tel.length < 10) || (wpp && wpp.length < 10)) { $('perfil-error').textContent = 'Telefone e WhatsApp: DDD + número.'; return; }
     const fd = new FormData();
-    fd.append('nome', $('perfil-nome').value.trim());
-    fd.append('email', $('perfil-email').value.trim());
+    [['nome', 'perfil-nome'], ['email', 'perfil-email'], ['cargo', 'perfil-cargo'], ['setor', 'perfil-setor'], ['ramal', 'perfil-ramal']].forEach(([k, id]) => fd.append(k, $(id).value.trim()));
+    fd.append('telefone', tel); fd.append('whatsapp', wpp);
     const f = $('perfil-foto').files[0]; if (f) fd.append('foto', f);
     carregando(btn, true);
     const r = await api('auth/profile', 'POST', fd);
