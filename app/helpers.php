@@ -38,8 +38,19 @@ function brl(float $v): string { return 'R$ ' . number_format($v, 2, ',', '.'); 
 /** IP do cliente. X-Forwarded-For só vale com TRUST_PROXY=1 (senão qualquer um forja o IP e fura o limite de tentativas). */
 function client_ip(): string {
     $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+    // AWS: o API Gateway sobrescreve X-Client-Ip com o IP real (o usuário não consegue forjar).
+    if (env('TRUST_PROXY') === '1' && !empty($_SERVER['HTTP_X_CLIENT_IP']) && origem_confiavel()) return substr(trim((string) $_SERVER['HTTP_X_CLIENT_IP']), 0, 64);
     if (env('TRUST_PROXY') === '1' && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) $ip = trim(explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
     return substr($ip, 0, 64);
+}
+/**
+ * A requisição veio do proxy autorizado (API Gateway)? Só vale quando ORIGIN_SECRET está definido
+ * (na AWS). Localmente/XAMPP sem ORIGIN_SECRET sempre retorna true.
+ */
+function origem_confiavel(): bool {
+    $segredo = (string) env('ORIGIN_SECRET', '');
+    if ($segredo === '' || PHP_SAPI === 'cli') return true;
+    return hash_equals($segredo, (string) ($_SERVER['HTTP_X_ORIGIN_VERIFY'] ?? ''));
 }
 /** Caminho relativo de upload pro front (sem barra inicial). */
 function public_path(?string $p): ?string { return $p ? ltrim($p, '/') : null; }

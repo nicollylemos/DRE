@@ -1,4 +1,4 @@
-// Teste de carga (k6):  k6 run -e BASE_URL=https://xxxx.cloudfront.net tests/load/k6.js
+// Teste de carga (k6):  k6 run -e BASE_URL=https://<id>.execute-api.us-east-1.amazonaws.com tests/load/k6.js
 // Simula usuários abrindo a tela de login, a API e o health check.
 import http from 'k6/http';
 import { check, sleep } from 'k6';

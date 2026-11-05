@@ -15,8 +15,8 @@ final class Session
     {
         return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
             || (env('TRUST_PROXY') === '1' && (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
-                // CloudFront manda este cabeçalho quando a política de origem inclui os headers do CloudFront
-                || ($_SERVER['HTTP_CLOUDFRONT_FORWARDED_PROTO'] ?? '') === 'https'));
+                // API Gateway (AWS) manda X-Origin-Proto: https junto com o segredo de origem
+                || (($_SERVER['HTTP_X_ORIGIN_PROTO'] ?? '') === 'https' && origem_confiavel())));
     }
 
     private static function cookieParams(int $lifetime): array
