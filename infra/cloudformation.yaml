@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
   DRE System (OAF) - infraestrutura completa para AWS Academy Learner Lab:
-  EC2 (Docker/Apache/PHP) + RDS MySQL + CloudFront (HTTPS) + Secrets Manager +
+  EC2 (Docker/Apache/PHP) + RDS MySQL + API Gateway HTTP API (HTTPS) + Secrets Manager +
   S3 (backups) + CloudWatch (logs, metricas, alarmes, dashboard) + SNS.
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -46,12 +46,6 @@ Parameters:
     Description: >
       Learner Lab nao deixa criar IAM Role; usamos o LabInstanceProfile (LabRole).
       Em producao: trocar por um instance profile proprio com least privilege (ver README).
-  CloudFrontPrefixListId:
-    Type: String
-    Default: pl-3b927c52
-    Description: >
-      Prefix list gerenciada com.amazonaws.global.cloudfront.origin-facing (pl-3b927c52 em us-east-1).
-      Confira em VPC > Managed prefix lists se estiver em outra regiao.
   SshCidr:
     Type: String
     Default: 0.0.0.0/0
@@ -78,13 +72,32 @@ Resources:
   DBSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub ${ProjectName}-${Environment}-db
+      Name: !Sub
+        - ${ProjectName}-${Environment}-db-${Sufixo}
+        - Sufixo: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]]]
       Description: Credenciais do RDS MySQL do DRE
       GenerateSecretString:
         SecretStringTemplate: '{"username":"dre_admin"}'
         GenerateStringKey: password
         PasswordLength: 32
         ExcludeCharacters: "\"@/\\'`$ #%&"
+      Tags:
+        - { Key: Project, Value: DRE }
+        - { Key: Environment, Value: !Ref Environment }
+        - { Key: Team, Value: !Ref TeamTag }
+
+  # Segredo compartilhado entre o API Gateway e a aplicacao: requisicao sem ele
+  # (alguem acessando o IP da EC2 direto) e recusada pelo PHP.
+  OriginSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub
+        - ${ProjectName}-${Environment}-origin-${Sufixo}
+        - Sufixo: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]]]
+      Description: Cabecalho X-Origin-Verify que o API Gateway envia para a EC2
+      GenerateSecretString:
+        PasswordLength: 40
+        ExcludePunctuation: true
       Tags:
         - { Key: Project, Value: DRE }
         - { Key: Environment, Value: !Ref Environment }
@@ -102,13 +115,13 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: !Sub ${ProjectName}-${Environment}-app-sg
-      GroupDescription: HTTP somente do CloudFront; SSH para deploy
+      GroupDescription: HTTP para o API Gateway (validado por segredo); SSH para deploy
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          SourcePrefixListId: !Ref CloudFrontPrefixListId
-          Description: HTTP vindo apenas das bordas do CloudFront
+          CidrIp: 0.0.0.0/0
+          Description: HTTP do API Gateway (sem prefix list) - app recusa sem X-Origin-Verify
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
@@ -174,7 +187,9 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !Sub ${ProjectName}-${Environment}-backups-${AWS::AccountId}
+      BucketName: !Sub
+        - ${ProjectName}-${Environment}-backups-${Sufixo}
+        - Sufixo: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]]]
       VersioningConfiguration: { Status: Enabled }
       BucketEncryption:
         ServerSideEncryptionConfiguration:
@@ -252,6 +267,7 @@ Resources:
           ENVIRONMENT=${Environment}
           AWS_REGION=${AWS::Region}
           DB_SECRET_ARN=${DBSecret}
+          ORIGIN_SECRET_ARN=${OriginSecret}
           DB_NAME=${ProjectName}${Environment}
           BACKUP_BUCKET=${BackupBucket}
           EOF
@@ -275,44 +291,85 @@ Resources:
         - { Key: Project, Value: DRE }
         - { Key: Environment, Value: !Ref Environment }
 
-  # ── HTTPS: CloudFront com certificado *.cloudfront.net (sem dominio proprio)
-  Distribution:
-    Type: AWS::CloudFront::Distribution
+  # ── HTTPS: API Gateway HTTP API (endpoint https://<id>.execute-api.<regiao>.amazonaws.com)
+  # O Learner Lab bloqueia cloudfront:CreateDistribution; o API Gateway da o HTTPS da AWS sem dominio.
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
     Properties:
-      DistributionConfig:
-        Comment: !Sub ${ProjectName}-${Environment}-cdn
-        Enabled: true
-        HttpVersion: http2and3
-        PriceClass: PriceClass_100
-        Origins:
-          - Id: ec2-app
-            DomainName: !If
-              - IsUsEast1
-              - !Join ["", ["ec2-", !Join ["-", !Split [".", !Ref AppEIP]], ".compute-1.amazonaws.com"]]
-              - !Join ["", ["ec2-", !Join ["-", !Split [".", !Ref AppEIP]], ".", !Ref "AWS::Region", ".compute.amazonaws.com"]]
-            CustomOriginConfig:
-              OriginProtocolPolicy: http-only
-              HTTPPort: 80
-              OriginReadTimeout: 60
-        DefaultCacheBehavior:
-          TargetOriginId: ec2-app
-          ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
-          CachedMethods: [GET, HEAD]
-          Compress: true
-          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad          # Managed-CachingDisabled (app dinamica)
-          OriginRequestPolicyId: 33f36d7e-f396-46d9-90e0-52428a34d9dc  # Managed-AllViewerAndCloudFrontHeaders-2022-06
-        CacheBehaviors:
-          - PathPattern: assets/*
-            TargetOriginId: ec2-app
-            ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods: [GET, HEAD]
-            Compress: true
-            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6        # Managed-CachingOptimized (css/js/img com ?v=)
+      Name: !Sub ${ProjectName}-${Environment}-api
+      ProtocolType: HTTP
+      Description: Entrada HTTPS do DRE - repassa tudo para a EC2
       Tags:
-        - { Key: Project, Value: DRE }
-        - { Key: Environment, Value: !Ref Environment }
-        - { Key: Team, Value: !Ref TeamTag }
+        Project: DRE
+        Environment: !Ref Environment
+        Team: !Ref TeamTag
+
+  # Cabecalhos que o API Gateway coloca (os X-Forwarded-* sao reservados):
+  #   X-Origin-Verify = segredo  |  X-Origin-Proto = https  |  X-Client-Ip = IP real do usuario
+  ProxyIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: ANY
+      IntegrationUri: !Sub
+        - http://${Host}/{proxy}
+        - Host: !If
+            - IsUsEast1
+            - !Join ["", ["ec2-", !Join ["-", !Split [".", !Ref AppEIP]], ".compute-1.amazonaws.com"]]
+            - !Join ["", ["ec2-", !Join ["-", !Split [".", !Ref AppEIP]], ".", !Ref "AWS::Region", ".compute.amazonaws.com"]]
+      PayloadFormatVersion: "1.0"
+      TimeoutInMillis: 30000
+      RequestParameters:
+        overwrite:header.X-Origin-Verify: !Sub "{{resolve:secretsmanager:${OriginSecret}}}"
+        overwrite:header.X-Origin-Proto: https
+        overwrite:header.X-Client-Ip: $context.identity.sourceIp
+
+  RootIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: ANY
+      IntegrationUri: !Sub
+        - http://${Host}/
+        - Host: !If
+            - IsUsEast1
+            - !Join ["", ["ec2-", !Join ["-", !Split [".", !Ref AppEIP]], ".compute-1.amazonaws.com"]]
+            - !Join ["", ["ec2-", !Join ["-", !Split [".", !Ref AppEIP]], ".", !Ref "AWS::Region", ".compute.amazonaws.com"]]
+      PayloadFormatVersion: "1.0"
+      TimeoutInMillis: 30000
+      RequestParameters:
+        overwrite:header.X-Origin-Verify: !Sub "{{resolve:secretsmanager:${OriginSecret}}}"
+        overwrite:header.X-Origin-Proto: https
+        overwrite:header.X-Client-Ip: $context.identity.sourceIp
+
+  ProxyRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: ANY /{proxy+}
+      Target: !Sub integrations/${ProxyIntegration}
+
+  RootRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: ANY /
+      Target: !Sub integrations/${RootIntegration}
+
+  DefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: $default
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 200     # protege a EC2 de rajadas
+        ThrottlingRateLimit: 100
+      Tags:
+        Project: DRE
+        Environment: !Ref Environment
 
   # ── Alertas
   AlertTopic:
@@ -446,22 +503,34 @@ Resources:
       ComparisonOperator: LessThanThreshold
       AlarmActions: [!Ref AlertTopic]
 
-  # Metricas do CloudFront so existem em us-east-1
-  Cdn5xxAlarm:
+  Api5xxAlarm:
     Type: AWS::CloudWatch::Alarm
-    Condition: IsUsEast1
     Properties:
-      AlarmName: !Sub ${ProjectName}-${Environment}-cdn-5xx
-      AlarmDescription: Mais de 5% das respostas com erro 5xx
-      Namespace: AWS/CloudFront
-      MetricName: 5xxErrorRate
-      Dimensions:
-        - { Name: DistributionId, Value: !Ref Distribution }
-        - { Name: Region, Value: Global }
-      Statistic: Average
+      AlarmName: !Sub ${ProjectName}-${Environment}-api-5xx
+      AlarmDescription: 10+ respostas 5xx no API Gateway em 5 minutos
+      Namespace: AWS/ApiGateway
+      MetricName: 5xx
+      Dimensions: [{ Name: ApiId, Value: !Ref HttpApi }]
+      Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
-      Threshold: 5
+      Threshold: 10
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  ApiLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ProjectName}-${Environment}-api-latencia
+      AlarmDescription: Latencia p95 acima de 2 s por 10 minutos
+      Namespace: AWS/ApiGateway
+      MetricName: Latency
+      Dimensions: [{ Name: ApiId, Value: !Ref HttpApi }]
+      ExtendedStatistic: p95
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 2000
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
       AlarmActions: [!Ref AlertTopic]
@@ -473,10 +542,12 @@ Resources:
       DashboardBody: !Sub |
         {
           "widgets": [
-            {"type":"metric","x":0,"y":0,"width":12,"height":6,"properties":{"title":"Requisicoes (CloudFront)","region":"us-east-1","stat":"Sum","period":300,
-              "metrics":[["AWS/CloudFront","Requests","DistributionId","${Distribution}","Region","Global"]]}},
-            {"type":"metric","x":12,"y":0,"width":12,"height":6,"properties":{"title":"Taxa de erro % (CloudFront)","region":"us-east-1","stat":"Average","period":300,
-              "metrics":[["AWS/CloudFront","4xxErrorRate","DistributionId","${Distribution}","Region","Global"],["AWS/CloudFront","5xxErrorRate","DistributionId","${Distribution}","Region","Global"]]}},
+            {"type":"metric","x":0,"y":0,"width":8,"height":6,"properties":{"title":"Requisicoes (API Gateway)","region":"${AWS::Region}","stat":"Sum","period":300,
+              "metrics":[["AWS/ApiGateway","Count","ApiId","${HttpApi}"]]}},
+            {"type":"metric","x":8,"y":0,"width":8,"height":6,"properties":{"title":"Erros 4xx / 5xx (API Gateway)","region":"${AWS::Region}","stat":"Sum","period":300,
+              "metrics":[["AWS/ApiGateway","4xx","ApiId","${HttpApi}"],["AWS/ApiGateway","5xx","ApiId","${HttpApi}"]]}},
+            {"type":"metric","x":16,"y":0,"width":8,"height":6,"properties":{"title":"Latencia p95 ms (API Gateway)","region":"${AWS::Region}","stat":"p95","period":300,
+              "metrics":[["AWS/ApiGateway","Latency","ApiId","${HttpApi}"],["AWS/ApiGateway","IntegrationLatency","ApiId","${HttpApi}"]]}},
             {"type":"metric","x":0,"y":6,"width":8,"height":6,"properties":{"title":"Erros da aplicacao / logins errados","region":"${AWS::Region}","stat":"Sum","period":300,
               "metrics":[["DRE/${Environment}","ErrorCount"],["DRE/${Environment}","LoginFailed"]]}},
             {"type":"metric","x":8,"y":6,"width":8,"height":6,"properties":{"title":"CPU EC2 x RDS","region":"${AWS::Region}","stat":"Average","period":300,
@@ -492,11 +563,11 @@ Resources:
 Outputs:
   AppUrl:
     Description: URL publica (HTTPS)
-    Value: !Sub https://${Distribution.DomainName}
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
   HealthUrl:
-    Value: !Sub https://${Distribution.DomainName}/health
-  DistributionId:
-    Value: !Ref Distribution
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/health
+  ApiId:
+    Value: !Ref HttpApi
   Ec2PublicIp:
     Description: Use como secret EC2_HOST no GitHub
     Value: !Ref AppEIP
