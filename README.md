@@ -516,7 +516,18 @@ Histórico de deploys em `/opt/dre/state/history.log` e nas tags `deploy-*` do G
 
 **Escala sozinho hoje:** API Gateway, S3, CloudWatch, Secrets Manager e o *storage* do RDS (autoscaling até 100 GB). **Não escala sozinho:** EC2 (vertical, manual) e CPU/memória do RDS.
 
-**Teste de carga:** `k6 run -e BASE_URL=https://<id>.execute-api.us-east-1.amazonaws.com tests/load/k6.js` (ou workflow **Teste de carga**). Rampa até 100 usuários virtuais; metas: erro < 1%, p95 < 800 ms (health < 300 ms).
+### Teste de carga (k6)
+
+Rodado pelo workflow **Teste de carga** contra a URL pública (API Gateway → EC2 t3.small → RDS db.t3.micro), em 05/11/2026. Script em [`tests/load/k6.js`](tests/load/k6.js); cada usuário virtual abre `/health` (consulta o banco), `/login` e o CSS, e espera 1 s.
+
+| Cenário | Usuários | Requisições | Vazão | Erros | Mediana | p90 | p95 | Metas (erro < 1%, p95 < 800 ms) |
+|---|---|---|---|---|---|---|---|---|
+| **Carga** (uso normal) | até 30 | 4.896 | 32,6 req/s | **0%** | 78 ms | 312 ms | 715 ms | ✅ atingidas |
+| **Estresse** (achar o limite) | até 100 | 6.789 | 37,5 req/s | **0%** | 76 ms | 3,8 s | 4,6 s | só observação |
+
+**Leitura.** No uso normal o sistema responde em ~80 ms na maioria das requisições e não teve nenhum erro. No estresse ele também não derrubou nenhuma requisição (zero 429 e zero 5xx), mas a vazão travou em ~37 req/s: a partir daí as requisições entram em fila e o p95 sobe para ~4,6 s. O gargalo é a **EC2 única e pequena** (t3.small, que além disso é *burstable* e perde desempenho quando os créditos de CPU acabam — num teste repetido logo depois de outro a latência piorou). Isso confirma a análise acima: o próximo passo de escala é **ALB + Auto Scaling Group** com 2+ instâncias (o que exige tirar sessões e uploads do disco local) ou, no curto prazo, uma instância maior não-burstable (ex.: m7i.large).
+
+Rodar de novo: Actions → **Teste de carga** → `cenario` = `carga` ou `estresse`, ou `k6 run -e BASE_URL=<AppUrl> -e CENARIO=carga tests/load/k6.js`.
 
 ## Custos
 

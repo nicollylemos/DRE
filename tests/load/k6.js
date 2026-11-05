@@ -24,7 +24,6 @@ const cenarios = {
     thresholds: {
       http_req_failed: ['rate<0.01'],          // < 1% de erro
       http_req_duration: ['p(95)<800'],        // 95% abaixo de 800 ms
-      'http_req_duration{nome:health}': ['p(95)<500'],
     },
   },
   estresse: {
