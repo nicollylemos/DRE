@@ -1,0 +1,17 @@
+# Produção na EC2 (usado pelo scripts/deploy.sh). O .env é gerado na EC2, nunca vai pro Git.
+services:
+  app:
+    image: dre-app:${APP_TAG:-latest}
+    container_name: dre-app
+    restart: unless-stopped
+    ports: ["80:80"]
+    env_file: .env
+    volumes:
+      - /opt/dre/data/uploads:/var/www/html/uploads
+      - /opt/dre/data/storage:/var/www/html/storage
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-group: /dre/${ENVIRONMENT:-dev}/app
+        awslogs-stream: ${HOSTNAME_TAG:-ec2}-app

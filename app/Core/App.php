@@ -27,6 +27,9 @@ final class App
         $api = Request::isApi();
         if ($api) header('Cache-Control: no-store');
 
+        // Health check antes de migração/sessão: responde rápido e não cria sessão.
+        if ($path === 'health' && $method === 'GET') \App\Controllers\HealthController::check();
+
         try {
             Migrator::garantir();
 
@@ -50,11 +53,13 @@ final class App
             $result = $router->dispatch($action, $params);
             if ($api) Response::json($result ?? ['ok' => true]);
         } catch (HttpException $e) {
+            if ($e->status >= 500) Logger::error($e->getMessage(), ['status' => $e->status]);
+            elseif (in_array($e->status, [403, 423, 429], true) && $method !== 'GET') Logger::warn($e->getMessage(), ['status' => $e->status, 'code' => $e->codigo]);
             if ($api) Response::json(array_filter(['error' => $e->getMessage(), 'code' => $e->codigo]), $e->status);
             if ($e->status === 401) Response::redirect('login');
             self::paginaErro($e->status, $e->getMessage());
         } catch (PDOException $e) {
-            error_log('[DB] ' . $e->getMessage());
+            Logger::error('Falha no banco de dados', ['sql_state' => $e->getCode(), 'mysql_code' => $e->errorInfo[1] ?? null, 'erro' => $e->getMessage()]);
             if ((int) ($e->errorInfo[1] ?? 0) === 1062 && $api) Response::json(['error' => 'Registro duplicado'], 400);
             $conexao = in_array((int) ($e->errorInfo[1] ?? $e->getCode()), [1045, 2002, 2003, 2005, 1044], true);
             $msg = $conexao
@@ -63,7 +68,7 @@ final class App
             if ($api) Response::json(['error' => $msg], 500);
             self::paginaErro(500, $msg);
         } catch (\Throwable $e) {
-            error_log('[APP] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+            Logger::error('Erro não tratado', ['erro' => $e->getMessage(), 'arquivo' => basename($e->getFile()) . ':' . $e->getLine(), 'tipo' => get_class($e)]);
             $msg = IS_PROD ? 'Erro interno' : $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine();
             if ($api) Response::json(['error' => $msg], 500);
             self::paginaErro(500, $msg);

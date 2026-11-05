@@ -1,0 +1,62 @@
+name: CD
+
+# Só implanta depois que o CI passou na main
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag ou commit para implantar
+        default: main
+
+permissions:
+  contents: write   # cria a tag deploy-*
+
+concurrency:
+  group: deploy-${{ vars.ENVIRONMENT || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT || 'dev' }}
+    env:
+      REF: ${{ github.event.inputs.ref || github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Confere se os secrets de deploy existem
+        id: pre
+        run: |
+          if [ -z "${{ secrets.EC2_HOST }}" ] || [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
+            echo "::warning::EC2_HOST/EC2_SSH_KEY não configurados — deploy pulado (lab desligado?)"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy na EC2 via SSH
+        if: steps.pre.outputs.skip != 'true'
+        run: |
+          install -m 600 /dev/null key.pem
+          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+          ssh -i key.pem -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
+            ec2-user@${{ secrets.EC2_HOST }} \
+            "cd /opt/dre/app && sudo git fetch --all --tags --quiet && sudo git checkout --force --quiet '$REF' && sudo bash scripts/deploy.sh '$REF'"
+          rm -f key.pem
+
+      - name: Smoke test pela URL pública (HTTPS)
+        if: steps.pre.outputs.skip != 'true' && vars.APP_URL != ''
+        run: |
+          for i in $(seq 10); do curl -fsS "${{ vars.APP_URL }}/health" && break; sleep 6; done
+          BASE_URL="${{ vars.APP_URL }}" bash tests/smoke.sh
+
+      - name: Marca a versão implantada (tag usada no rollback)
+        if: steps.pre.outputs.skip != 'true'
+        run: |
+          TAG="deploy-${{ vars.ENVIRONMENT || 'dev' }}-$(date -u +%Y%m%d-%H%M%S)"
+          git tag "$TAG" "$REF" && git push origin "$TAG"
+          echo "Implantado: $REF ($TAG)" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,29 @@
+# Desenvolvimento local (DEV): app + MySQL.  docker compose up --build  →  http://localhost:8080
+services:
+  app:
+    build: .
+    ports: ["8080:80"]
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: dre
+      DB_PASS: dre_dev_local   # senha só do container local, não é usada na AWS
+      DB_NAME: dre_dev
+      APP_ENV: development
+      ENVIRONMENT: dev
+    volumes:
+      - ./uploads:/var/www/html/uploads
+      - ./storage:/var/www/html/storage
+    depends_on:
+      db: { condition: service_healthy }
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: dre_dev
+      MYSQL_USER: dre
+      MYSQL_PASSWORD: dre_dev_local
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 20

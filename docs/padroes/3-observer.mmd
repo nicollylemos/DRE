@@ -24,11 +24,15 @@ classDiagram
     }
     class VincularNotaFiscal { +ouvir(Evento) void }
     class DesvincularNotasFiscais { +ouvir(Evento) void }
+    class ApagarComprovante { +ouvir(Evento) void }
+    class Upload { +apagar(caminho)$ void }
     class NotaFiscal { +desvincularLancamento(id)$ void }
     TransacaoController ..> Despachante : dispara
     TransacaoController ..> Evento : cria
     Despachante "1" o-- "*" Ouvinte : avisa
     Ouvinte <|.. VincularNotaFiscal
     Ouvinte <|.. DesvincularNotasFiscais
+    Ouvinte <|.. ApagarComprovante
+    ApagarComprovante ..> Upload
     VincularNotaFiscal ..> NotaFiscal
     DesvincularNotasFiscais ..> NotaFiscal

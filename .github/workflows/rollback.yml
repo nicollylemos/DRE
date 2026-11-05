@@ -1,0 +1,26 @@
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag/commit para voltar (vazio = versão anterior, sem build)"
+        required: false
+        default: ""
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: ${{ vars.ENVIRONMENT || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rollback na EC2
+        run: |
+          install -m 600 /dev/null key.pem
+          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+          ssh -i key.pem -o StrictHostKeyChecking=accept-new ec2-user@${{ secrets.EC2_HOST }} \
+            "sudo bash /opt/dre/app/scripts/rollback.sh '${{ github.event.inputs.ref }}'"
+          rm -f key.pem
+      - name: Confere o health
+        if: vars.APP_URL != ''
+        run: BASE_URL="${{ vars.APP_URL }}" bash tests/smoke.sh

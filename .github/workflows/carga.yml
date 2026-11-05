@@ -1,0 +1,20 @@
+name: Teste de carga
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: URL base (ex. https://dxxxx.cloudfront.net)
+        required: true
+
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - name: k6
+        run: k6 run --summary-export=k6-resultado.json -e BASE_URL="${{ github.event.inputs.url }}" tests/load/k6.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: k6-resultado, path: k6-resultado.json }

@@ -14,7 +14,9 @@ final class Session
     public static function https(): bool
     {
         return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (env('TRUST_PROXY') === '1' && ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+            || (env('TRUST_PROXY') === '1' && (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
+                // CloudFront manda este cabeçalho quando a política de origem inclui os headers do CloudFront
+                || ($_SERVER['HTTP_CLOUDFRONT_FORWARDED_PROTO'] ?? '') === 'https'));
     }
 
     private static function cookieParams(int $lifetime): array

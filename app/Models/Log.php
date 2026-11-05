@@ -19,6 +19,8 @@ class Log extends Model
      */
     public static function registrar(string $acao, string $entidade, $id = null, $detalhes = null, ?string $username = null, ?array $dados = null): void
     {
+        // Espelha a atividade no log da aplicação (CloudWatch). Só ação/entidade/id — nunca o snapshot.
+        \App\Core\Logger::{$acao === 'login_failed' ? 'warn' : 'info'}('Operação: ' . $acao, ['acao' => $acao, 'entidade' => $entidade, 'entidade_id' => $id, 'usuario' => $username ?? (Auth::user()['username'] ?? null)]);
         try {
             $u = Auth::user();
             Database::run(
@@ -28,7 +30,7 @@ class Log extends Model
                  $detalhes !== null ? mb_substr((string) $detalhes, 0, 500) : null, client_ip(),
                  $dados !== null ? self::snapshot($dados) : null]
             );
-        } catch (\Throwable $e) { error_log('[LOG] falha ao registrar: ' . $e->getMessage()); }
+        } catch (\Throwable $e) { \App\Core\Logger::warn('Falha ao gravar log de atividade', ['erro' => $e->getMessage()]); }
     }
 
     /** JSON do registro sem campos sensíveis (aceita um registro ou uma lista deles). */

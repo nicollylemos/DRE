@@ -239,6 +239,9 @@ classDiagram
         class DesvincularNotasFiscais {
             +ouvir(Evento) void
         }
+        class ApagarComprovante {
+            +ouvir(Evento) void
+        }
     }
 
     %% ─── Front Controller / MVC
@@ -297,6 +300,7 @@ classDiagram
     Despachante ..> Evento
     Ouvinte <|.. VincularNotaFiscal
     Ouvinte <|.. DesvincularNotasFiscais
+    Ouvinte <|.. ApagarComprovante
     VincularNotaFiscal ..> NotaFiscal
     VincularNotaFiscal ..> Log
     DesvincularNotasFiscais ..> NotaFiscal

@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  qualidade:
+    name: Lint + testes unitários
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_mysql, mbstring, zip, iconv
+      - name: Sintaxe PHP (php -l em todos os arquivos)
+        run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
+      - name: Testes unitários
+        run: php tests/unit/run.php
+      - name: ShellCheck dos scripts de operação
+        run: shellcheck -x -P scripts scripts/*.sh tests/*.sh
+      - name: Valida o CloudFormation (cfn-lint)
+        run: pip install -q cfn-lint && cfn-lint infra/cloudformation.yaml
+
+  segredos:
+    name: Varredura de segredos (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  integracao:
+    name: Integração (PHP + MySQL 8)
+    runs-on: ubuntu-latest
+    needs: qualidade
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: dre_ci
+          MYSQL_USER: dre
+          MYSQL_PASSWORD: ci_only_pass     # banco descartável do runner, não é credencial real
+          MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost" --health-interval=5s --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: dre
+      DB_PASS: ci_only_pass
+      DB_NAME: dre_ci
+      APP_ENV: production
+      ENVIRONMENT: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_mysql, mbstring, zip, iconv
+      - name: Migração do banco
+        run: php app/Database/Migrator.php --migrate
+      - name: Sobe o servidor
+        run: |
+          php -S 127.0.0.1:8000 router.php > php.log 2>&1 &
+          sleep 2
+      - name: Smoke test (health, login, bloqueios de segurança)
+        run: BASE_URL=http://127.0.0.1:8000 bash tests/smoke.sh
+      - name: Log do servidor (se falhar)
+        if: failure()
+        run: cat php.log
+
+  docker:
+    name: Build da imagem Docker
+    runs-on: ubuntu-latest
+    needs: qualidade
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker build
+        run: docker build -t dre-app:${{ github.sha }} --build-arg APP_REVISION=${{ github.sha }} .
+      - name: Container sobe e responde (sem banco → health 503 é esperado)
+        run: |
+          docker run -d --name dre -p 8080:80 -e DB_HOST=127.0.0.1 -e APP_ENV=production dre-app:${{ github.sha }}
+          sleep 5
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health)
+          echo "health: $code"; [ "$code" = 503 ] || [ "$code" = 200 ]
+          [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/.env)" = 403 ]

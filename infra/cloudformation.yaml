@@ -1,0 +1,514 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  DRE System (OAF) - infraestrutura completa para AWS Academy Learner Lab:
+  EC2 (Docker/Apache/PHP) + RDS MySQL + CloudFront (HTTPS) + Secrets Manager +
+  S3 (backups) + CloudWatch (logs, metricas, alarmes, dashboard) + SNS.
+
+# ─────────────────────────────────────────────────────────────────────────────
+Parameters:
+  ProjectName:
+    Type: String
+    Default: dre
+    AllowedPattern: "[a-z][a-z0-9-]*"
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, hml, prod]
+    Description: Prefixo dos recursos (dre-dev-*, dre-hml-*, dre-prod-*)
+  TeamTag:
+    Type: String
+    Default: OAF-Grupo
+  GitRepoUrl:
+    Type: String
+    Default: https://github.com/nicollylemos/DRE.git
+  GitRef:
+    Type: String
+    Default: main
+    Description: Branch, tag ou commit implantado no primeiro boot
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: vockey
+    Description: No Learner Lab o par de chaves ja existente se chama vockey (labsuser.pem)
+  InstanceType:
+    Type: String
+    Default: t3.small
+    AllowedValues: [t3.micro, t3.small, t3.medium]
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    AllowedValues: [db.t3.micro, db.t3.small, db.t4g.micro]
+  DBAllocatedStorage:
+    Type: Number
+    Default: 20
+  InstanceProfileName:
+    Type: String
+    Default: LabInstanceProfile
+    Description: >
+      Learner Lab nao deixa criar IAM Role; usamos o LabInstanceProfile (LabRole).
+      Em producao: trocar por um instance profile proprio com least privilege (ver README).
+  CloudFrontPrefixListId:
+    Type: String
+    Default: pl-3b927c52
+    Description: >
+      Prefix list gerenciada com.amazonaws.global.cloudfront.origin-facing (pl-3b927c52 em us-east-1).
+      Confira em VPC > Managed prefix lists se estiver em outra regiao.
+  SshCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: >
+      Quem pode acessar a porta 22. O deploy do GitHub Actions entra por SSH (IPs dinamicos),
+      por isso o padrao e aberto (somente chave, sem senha). Em producao: SSM Session Manager, sem porta 22.
+  AlertEmail:
+    Type: String
+    Default: ""
+    Description: E-mail que recebe os alarmes (confirmar a inscricao no e-mail da AWS). Vazio = sem e-mail.
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+Conditions:
+  HasEmail: !Not [!Equals [!Ref AlertEmail, ""]]
+  IsUsEast1: !Equals [!Ref "AWS::Region", us-east-1]
+  IsProd: !Equals [!Ref Environment, prod]
+
+# ─────────────────────────────────────────────────────────────────────────────
+Resources:
+
+  # ── Segredos: senha do banco gerada pela AWS, nunca aparece no Git nem no template
+  DBSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub ${ProjectName}-${Environment}-db
+      Description: Credenciais do RDS MySQL do DRE
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"dre_admin"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludeCharacters: "\"@/\\'`$ #%&"
+      Tags:
+        - { Key: Project, Value: DRE }
+        - { Key: Environment, Value: !Ref Environment }
+        - { Key: Team, Value: !Ref TeamTag }
+
+  DBSecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref DBSecret
+      TargetId: !Ref Database
+      TargetType: AWS::RDS::DBInstance
+
+  # ── Rede: VPC padrao do lab, seguranca por Security Group
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-${Environment}-app-sg
+      GroupDescription: HTTP somente do CloudFront; SSH para deploy
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourcePrefixListId: !Ref CloudFrontPrefixListId
+          Description: HTTP vindo apenas das bordas do CloudFront
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SshCidr
+          Description: SSH (chave) para deploy via GitHub Actions
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${Environment}-app-sg" }
+        - { Key: Project, Value: DRE }
+        - { Key: Environment, Value: !Ref Environment }
+        - { Key: Team, Value: !Ref TeamTag }
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-${Environment}-db-sg
+      GroupDescription: MySQL somente a partir da EC2 da aplicacao
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !GetAtt AppSecurityGroup.GroupId
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${Environment}-db-sg" }
+        - { Key: Project, Value: DRE }
+        - { Key: Environment, Value: !Ref Environment }
+        - { Key: Team, Value: !Ref TeamTag }
+
+  # ── Banco: RDS MySQL gerenciado, privado, criptografado, backup automatico 7 dias
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot          # apagar a stack gera um snapshot final
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub ${ProjectName}-${Environment}-mysql
+      Engine: mysql
+      EngineVersion: "8.0"
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      MaxAllocatedStorage: 100        # storage autoscaling
+      StorageType: gp3
+      StorageEncrypted: true
+      DBName: !Sub ${ProjectName}${Environment}
+      MasterUsername: !Sub "{{resolve:secretsmanager:${DBSecret}:SecretString:username}}"
+      MasterUserPassword: !Sub "{{resolve:secretsmanager:${DBSecret}:SecretString:password}}"
+      VPCSecurityGroups: [!GetAtt DBSecurityGroup.GroupId]
+      PubliclyAccessible: false
+      MultiAZ: !If [IsProd, true, false]
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: "06:00-07:00"            # 03h-04h em Brasilia
+      PreferredMaintenanceWindow: "sun:07:30-sun:08:30"
+      CopyTagsToSnapshot: true
+      AutoMinorVersionUpgrade: true
+      DeletionProtection: !If [IsProd, true, false]
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${Environment}-mysql" }
+        - { Key: Project, Value: DRE }
+        - { Key: Environment, Value: !Ref Environment }
+        - { Key: Team, Value: !Ref TeamTag }
+
+  # ── Backups de arquivos (uploads/comprovantes/notas) + dumps logicos do MySQL
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub ${ProjectName}-${Environment}-backups-${AWS::AccountId}
+      VersioningConfiguration: { Status: Enabled }
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: dumps-mysql-30-dias
+            Status: Enabled
+            Prefix: mysql/
+            ExpirationInDays: 30
+          - Id: versoes-antigas-30-dias
+            Status: Enabled
+            NoncurrentVersionExpiration: { NoncurrentDays: 30 }
+      Tags:
+        - { Key: Project, Value: DRE }
+        - { Key: Environment, Value: !Ref Environment }
+        - { Key: Team, Value: !Ref TeamTag }
+
+  # ── Logs da aplicacao (o Docker manda stdout/stderr do container pra ca)
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /${ProjectName}/${Environment}/app
+      RetentionInDays: 30
+      Tags:
+        - { Key: Project, Value: DRE }
+        - { Key: Environment, Value: !Ref Environment }
+
+  # ── Servidor da aplicacao
+  AppInstance:
+    Type: AWS::EC2::Instance
+    DependsOn: DBSecretAttachment
+    CreationPolicy:
+      ResourceSignal: { Timeout: PT20M }
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref InstanceProfileName
+      SecurityGroupIds: [!GetAtt AppSecurityGroup.GroupId]
+      Monitoring: true                # metricas detalhadas (1 min)
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs: { VolumeSize: 20, VolumeType: gp3, Encrypted: true }
+      MetadataOptions: { HttpTokens: required }   # IMDSv2
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${Environment}-app" }
+        - { Key: Project, Value: DRE }
+        - { Key: Environment, Value: !Ref Environment }
+        - { Key: Team, Value: !Ref TeamTag }
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+          exec > >(tee /var/log/dre-bootstrap.log) 2>&1
+          # qualquer falha avisa o CloudFormation na hora (senao ele espera os 20 min)
+          trap '/opt/aws/bin/cfn-signal -e 1 --stack ${AWS::StackName} --resource AppInstance --region ${AWS::Region}' ERR
+
+          dnf install -y docker git jq mariadb105 cronie aws-cfn-bootstrap
+          systemctl enable --now docker crond
+          mkdir -p /usr/local/lib/docker/cli-plugins
+          curl -fsSL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+            -o /usr/local/lib/docker/cli-plugins/docker-compose
+          chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+          usermod -aG docker ec2-user
+
+          mkdir -p /opt/dre/data
+          cat > /opt/dre/deploy.env <<EOF
+          PROJECT=${ProjectName}
+          ENVIRONMENT=${Environment}
+          AWS_REGION=${AWS::Region}
+          DB_SECRET_ARN=${DBSecret}
+          DB_NAME=${ProjectName}${Environment}
+          BACKUP_BUCKET=${BackupBucket}
+          EOF
+          chmod 600 /opt/dre/deploy.env
+
+          git clone ${GitRepoUrl} /opt/dre/app
+          bash /opt/dre/app/scripts/deploy.sh ${GitRef}
+
+          # backup diario 03:30 (horario do servidor = UTC 06:30)
+          echo "30 6 * * * root /opt/dre/app/scripts/backup.sh >> /var/log/dre-backup.log 2>&1" > /etc/cron.d/dre-backup
+
+          /opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackName} --resource AppInstance --region ${AWS::Region}
+
+  AppEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref AppInstance
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${Environment}-eip" }
+        - { Key: Project, Value: DRE }
+        - { Key: Environment, Value: !Ref Environment }
+
+  # ── HTTPS: CloudFront com certificado *.cloudfront.net (sem dominio proprio)
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub ${ProjectName}-${Environment}-cdn
+        Enabled: true
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: ec2-app
+            DomainName: !If
+              - IsUsEast1
+              - !Join ["", ["ec2-", !Join ["-", !Split [".", !Ref AppEIP]], ".compute-1.amazonaws.com"]]
+              - !Join ["", ["ec2-", !Join ["-", !Split [".", !Ref AppEIP]], ".", !Ref "AWS::Region", ".compute.amazonaws.com"]]
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+              HTTPPort: 80
+              OriginReadTimeout: 60
+        DefaultCacheBehavior:
+          TargetOriginId: ec2-app
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad          # Managed-CachingDisabled (app dinamica)
+          OriginRequestPolicyId: 33f36d7e-f396-46d9-90e0-52428a34d9dc  # Managed-AllViewerAndCloudFrontHeaders-2022-06
+        CacheBehaviors:
+          - PathPattern: assets/*
+            TargetOriginId: ec2-app
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6        # Managed-CachingOptimized (css/js/img com ?v=)
+      Tags:
+        - { Key: Project, Value: DRE }
+        - { Key: Environment, Value: !Ref Environment }
+        - { Key: Team, Value: !Ref TeamTag }
+
+  # ── Alertas
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${ProjectName}-${Environment}-alertas
+      Tags:
+        - { Key: Project, Value: DRE }
+        - { Key: Environment, Value: !Ref Environment }
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasEmail
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # Toda linha {"level":"ERROR"} do log vira 1 na metrica DRE/App ErrorCount
+  ErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref AppLogGroup
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricNamespace: !Sub DRE/${Environment}
+          MetricName: ErrorCount
+          MetricValue: "1"
+          DefaultValue: 0
+
+  LoginFailedMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref AppLogGroup
+      FilterPattern: '{ $.acao = "login_failed" }'
+      MetricTransformations:
+        - MetricNamespace: !Sub DRE/${Environment}
+          MetricName: LoginFailed
+          MetricValue: "1"
+          DefaultValue: 0
+
+  AppErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ProjectName}-${Environment}-app-erros
+      AlarmDescription: 5+ erros da aplicacao em 5 minutos
+      Namespace: !Sub DRE/${Environment}
+      MetricName: ErrorCount
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
+
+  BruteForceAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ProjectName}-${Environment}-login-falhas
+      AlarmDescription: 20+ tentativas de login erradas em 5 minutos (possivel forca bruta)
+      Namespace: !Sub DRE/${Environment}
+      MetricName: LoginFailed
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 20
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  Ec2CpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ProjectName}-${Environment}-ec2-cpu
+      AlarmDescription: CPU da EC2 acima de 80% por 10 minutos
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Dimensions: [{ Name: InstanceId, Value: !Ref AppInstance }]
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
+
+  Ec2StatusAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ProjectName}-${Environment}-ec2-status
+      AlarmDescription: Falha no status check da EC2
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed
+      Dimensions: [{ Name: InstanceId, Value: !Ref AppInstance }]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions: [!Ref AlertTopic]
+
+  RdsCpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ProjectName}-${Environment}-rds-cpu
+      AlarmDescription: CPU do RDS acima de 80% por 10 minutos
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Dimensions: [{ Name: DBInstanceIdentifier, Value: !Ref Database }]
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions: [!Ref AlertTopic]
+
+  RdsStorageAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ProjectName}-${Environment}-rds-disco
+      AlarmDescription: Menos de 2 GB livres no RDS
+      Namespace: AWS/RDS
+      MetricName: FreeStorageSpace
+      Dimensions: [{ Name: DBInstanceIdentifier, Value: !Ref Database }]
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 2147483648
+      ComparisonOperator: LessThanThreshold
+      AlarmActions: [!Ref AlertTopic]
+
+  # Metricas do CloudFront so existem em us-east-1
+  Cdn5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsUsEast1
+    Properties:
+      AlarmName: !Sub ${ProjectName}-${Environment}-cdn-5xx
+      AlarmDescription: Mais de 5% das respostas com erro 5xx
+      Namespace: AWS/CloudFront
+      MetricName: 5xxErrorRate
+      Dimensions:
+        - { Name: DistributionId, Value: !Ref Distribution }
+        - { Name: Region, Value: Global }
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub ${ProjectName}-${Environment}
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {"type":"metric","x":0,"y":0,"width":12,"height":6,"properties":{"title":"Requisicoes (CloudFront)","region":"us-east-1","stat":"Sum","period":300,
+              "metrics":[["AWS/CloudFront","Requests","DistributionId","${Distribution}","Region","Global"]]}},
+            {"type":"metric","x":12,"y":0,"width":12,"height":6,"properties":{"title":"Taxa de erro % (CloudFront)","region":"us-east-1","stat":"Average","period":300,
+              "metrics":[["AWS/CloudFront","4xxErrorRate","DistributionId","${Distribution}","Region","Global"],["AWS/CloudFront","5xxErrorRate","DistributionId","${Distribution}","Region","Global"]]}},
+            {"type":"metric","x":0,"y":6,"width":8,"height":6,"properties":{"title":"Erros da aplicacao / logins errados","region":"${AWS::Region}","stat":"Sum","period":300,
+              "metrics":[["DRE/${Environment}","ErrorCount"],["DRE/${Environment}","LoginFailed"]]}},
+            {"type":"metric","x":8,"y":6,"width":8,"height":6,"properties":{"title":"CPU EC2 x RDS","region":"${AWS::Region}","stat":"Average","period":300,
+              "metrics":[["AWS/EC2","CPUUtilization","InstanceId","${AppInstance}"],["AWS/RDS","CPUUtilization","DBInstanceIdentifier","${Database}"]]}},
+            {"type":"metric","x":16,"y":6,"width":8,"height":6,"properties":{"title":"RDS conexoes / latencia leitura","region":"${AWS::Region}","stat":"Average","period":300,
+              "metrics":[["AWS/RDS","DatabaseConnections","DBInstanceIdentifier","${Database}"],["AWS/RDS","ReadLatency","DBInstanceIdentifier","${Database}",{"yAxis":"right"}]]}},
+            {"type":"log","x":0,"y":12,"width":24,"height":6,"properties":{"title":"Ultimos WARN/ERROR","region":"${AWS::Region}",
+              "query":"SOURCE '/${ProjectName}/${Environment}/app' | fields @timestamp, level, msg, path, status | filter level in ['WARN','ERROR'] | sort @timestamp desc | limit 50"}}
+          ]
+        }
+
+# ─────────────────────────────────────────────────────────────────────────────
+Outputs:
+  AppUrl:
+    Description: URL publica (HTTPS)
+    Value: !Sub https://${Distribution.DomainName}
+  HealthUrl:
+    Value: !Sub https://${Distribution.DomainName}/health
+  DistributionId:
+    Value: !Ref Distribution
+  Ec2PublicIp:
+    Description: Use como secret EC2_HOST no GitHub
+    Value: !Ref AppEIP
+  SshCommand:
+    Value: !Sub ssh -i labsuser.pem ec2-user@${AppEIP}
+  DatabaseEndpoint:
+    Value: !GetAtt Database.Endpoint.Address
+  DbSecretArn:
+    Value: !Ref DBSecret
+  BackupBucketName:
+    Value: !Ref BackupBucket
+  AlertTopicArn:
+    Value: !Ref AlertTopic
+  DashboardUrl:
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${ProjectName}-${Environment}

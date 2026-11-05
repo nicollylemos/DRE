@@ -1,0 +1,29 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LerSenhaDoBanco",
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "arn:aws:secretsmanager:us-east-1:<CONTA>:secret:dre-prod-db-*"
+    },
+    {
+      "Sid": "EnviarLogsDaAplicacao",
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"],
+      "Resource": "arn:aws:logs:us-east-1:<CONTA>:log-group:/dre/prod/app:*"
+    },
+    {
+      "Sid": "BackupNoBucket",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::dre-prod-backups-<CONTA>/*"
+    },
+    {
+      "Sid": "ListarBucketDeBackup",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::dre-prod-backups-<CONTA>"
+    }
+  ]
+}
