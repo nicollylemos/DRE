@@ -312,7 +312,9 @@ DRE-php/
 
 **Integrantes:** Nicolly Lemos da Silva · Rafaela Mansano Fernandes · Karina de Moraes Garcia · Rafaela Silva Riganti
 
-**URL:** `https://<id>.execute-api.us-east-1.amazonaws.com` (saída `AppUrl` da stack) · health: `…/health`
+**URL:** https://3udlpk22p9.execute-api.us-east-1.amazonaws.com · health: https://3udlpk22p9.execute-api.us-east-1.amazonaws.com/health
+
+> O AWS Academy desliga a EC2 e o RDS quando a sessão do lab termina; fora do horário do lab a URL fica fora do ar.
 
 ## Arquitetura
 
@@ -470,7 +472,7 @@ O dashboard mostra requisições, erros 4xx/5xx e latência p95 (API Gateway), C
 
 ### Restore testado
 
-Roteiro executado pela equipe (prints em `docs/aws/`):
+Roteiro executado pela equipe em 05/11/2026 (prints 10 a 15 em [`docs/aws/prints/`](docs/aws/prints/)):
 ```
 1. Cadastrar o cliente "TESTE RESTORE" e anexar um comprovante
 2. sudo bash scripts/backup.sh                      → dump + arquivos no S3
@@ -570,6 +572,22 @@ Cenário: 10.000 usuários/mês · 100.000 chamadas de API · 500.000 operaçõe
 ### Disaster Recovery
 
 RPO (quanto dado pode perder): **≤ 5 min** pelo point-in-time do RDS, **24 h** para arquivos. RTO (quanto tempo fora): **~30 min** — recriar a stack pelo template + restore. Em produção: snapshots copiados para outra região e template pronto para subir lá.
+
+## 📸 Evidências
+
+Prints em [`docs/aws/prints/`](docs/aws/prints/) (dados pessoais do cliente de teste borrados).
+
+| # | O que mostra | Requisito |
+|---|---|---|
+| 01 · 02 | [Stack `dre-dev` CREATE_COMPLETE](docs/aws/prints/01-cloudformation-stack-create-complete.png) e [eventos](docs/aws/prints/02-cloudformation-eventos.png) | Aplicação na AWS · IaC |
+| 03 | [Site aberto em HTTPS pelo API Gateway](docs/aws/prints/03-site-https-primeiro-acesso.png) | HTTPS |
+| 04 · 05 | [CI e CD no GitHub Actions](docs/aws/prints/04-github-actions-ci-cd.png) · [deploy na EC2 com sucesso](docs/aws/prints/05-cd-deploy-ec2-sucesso.png) | CI/CD |
+| 06 | [Rollback pelo GitHub Actions](docs/aws/prints/06-rollback-sucesso.png) | Rollback |
+| 07 | [Dashboard `dre-dev` no CloudWatch](docs/aws/prints/07-cloudwatch-dashboard-dre-dev.png) | Monitoramento |
+| 08 | [Alarme `dre-dev-api-5xx` disparado sozinho](docs/aws/prints/08-cloudwatch-alarme-api-5xx-disparado.png) pelos erros do deploy durante o teste de carga | Alarmes |
+| 09 | [Teste de estresse com k6](docs/aws/prints/09-teste-estresse-k6.png) | Teste de carga |
+| 10 → 15 | Restore: [dado criado](docs/aws/prints/10-restore-1-cliente-cadastrado.png) → [backup no S3](docs/aws/prints/11-restore-2-backup-s3.png) → [falha simulada](docs/aws/prints/12-restore-3-falha-simulada.png) → [dado apagado](docs/aws/prints/13-restore-4-cliente-apagado.png) → [restore](docs/aws/prints/14-restore-5-restore-banco.png) → [dado recuperado](docs/aws/prints/15-restore-6-cliente-recuperado.png) | Backup · Restore testado |
+| 16 · 17 | [Secrets](docs/aws/prints/16-github-secrets.png) e [variables](docs/aws/prints/17-github-variables.png) do GitHub (só nomes, valores criptografados) | Secrets fora do código |
 
 ## ✅ Checklist de entrega
 
