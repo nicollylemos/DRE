@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       url:
-        description: URL base (ex. https://<id>.execute-api.us-east-1.amazonaws.com)
+        description: URL base (ex. https://dxxxx.cloudfront.net)
         required: true
 
 jobs:

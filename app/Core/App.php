@@ -30,13 +30,6 @@ final class App
         // Health check antes de migração/sessão: responde rápido e não cria sessão.
         if ($path === 'health' && $method === 'GET') \App\Controllers\HealthController::check();
 
-        // Na AWS só o API Gateway conhece o ORIGIN_SECRET: quem tentar o IP da EC2 direto leva 403.
-        if (!origem_confiavel()) {
-            Logger::warn('Acesso direto à origem bloqueado (sem X-Origin-Verify)');
-            if ($api) Response::json(['error' => 'Acesso negado'], 403);
-            http_response_code(403); echo 'Forbidden'; exit;
-        }
-
         try {
             Migrator::garantir();
 

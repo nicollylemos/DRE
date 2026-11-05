@@ -312,18 +312,18 @@ DRE-php/
 
 **Integrantes:** Nicolly Lemos da Silva · Rafaela Mansano Fernandes · Karina de Moraes Garcia · Rafaela Silva Riganti
 
-**URL:** `https://<id>.execute-api.us-east-1.amazonaws.com` (saída `AppUrl` da stack) · health: `…/health`
+**URL:** `https://<id>.cloudfront.net` (saída `AppUrl` da stack) · health: `https://<id>.cloudfront.net/health`
 
 ## Arquitetura
 
 ```mermaid
 flowchart TB
-    U([Usuário / navegador]) -->|HTTPS 443| CF[API Gateway HTTP API<br/>dre-dev-api<br/>certificado da AWS · throttling]
+    U([Usuário / navegador]) -->|HTTPS 443| CF[CloudFront<br/>certificado *.cloudfront.net<br/>cache de /assets/*]
     GH[GitHub Actions<br/>CI + CD] -->|SSH deploy.sh| EC2
     subgraph VPC["VPC padrão — us-east-1"]
-        CF -->|HTTP 80 + cabeçalho secreto<br/>X-Origin-Verify| EC2[EC2 t3.small · Amazon Linux 2023<br/>Docker: Apache + PHP 8.3<br/>dre-dev-app + Elastic IP]
+        CF -->|HTTP 80 — SG aceita só o<br/>prefix list do CloudFront| EC2[EC2 t3.small · Amazon Linux 2023<br/>Docker: Apache + PHP 8.3<br/>dre-dev-app + Elastic IP]
         EC2 -->|3306 — SG só da EC2| RDS[(RDS MySQL 8.0<br/>dre-dev-mysql<br/>privado · criptografado<br/>backup automático 7 dias)]
-        EC2 -.->|lê senha do banco<br/>e segredo de origem| SM[Secrets Manager<br/>dre-dev-db · dre-dev-origin]
+        EC2 -.->|lê senha do banco| SM[Secrets Manager<br/>dre-dev-db]
         EC2 -->|dump diário + uploads| S3[(S3 dre-dev-backups<br/>versionado · criptografado)]
         EC2 -->|stdout/stderr do container| CWL[CloudWatch Logs<br/>/dre/dev/app]
     end
@@ -343,12 +343,12 @@ A infraestrutura inteira está em código: [`infra/cloudformation.yaml`](infra/c
 |---|---|
 | **EC2 + Docker** | A aplicação é PHP com Apache, sessões em arquivo e uploads em disco. Uma VM roda isso sem reescrever o sistema. O Docker deixa a imagem idêntica no CI e na EC2 e permite guardar versões anteriores para rollback instantâneo. Lambda exigiria reescrever o app para serverless e tirar o estado do disco. |
 | **RDS MySQL** | O sistema é relacional (lançamentos ↔ categorias ↔ caixas ↔ parceiros, DRE com JOIN/GROUP BY), então NoSQL não serve. O RDS tira da equipe patch, backup automático, point-in-time restore, criptografia e storage autoscaling. |
-| **API Gateway (HTTP API)** | Dá um endpoint HTTPS da própria AWS sem precisar de domínio, com throttling (protege a EC2 de rajadas) e métricas de requisições, erros e latência. Funciona como proxy reverso para a EC2. O CloudFront seria a primeira escolha, mas o Learner Lab bloqueia `cloudfront:CreateDistribution`; o ALB daria HTTPS só com domínio próprio no ACM. |
+| **CloudFront** | Entrega HTTPS com certificado da AWS sem precisar de domínio, cacheia CSS/JS/imagens perto do usuário e esconde a EC2 (o Security Group só aceita IPs do CloudFront). ALB também daria HTTPS, mas exige domínio próprio no ACM. |
 | **Secrets Manager** | A senha do banco é gerada pela própria AWS e nunca passa por Git, template ou tela. A EC2 lê na hora do deploy usando a role da instância (sem Access Key). |
 | **S3** | Destino barato e durável (11 noves) dos backups: dumps do MySQL e cópia dos uploads/comprovantes/notas. Versionamento protege contra apagar ou sobrescrever por engano. |
-| **CloudWatch** | Logs centralizados (o Docker envia direto), métricas de EC2/RDS/API Gateway, métricas extraídas dos logs (erros, logins errados), alarmes e dashboard. |
+| **CloudWatch** | Logs centralizados (o Docker envia direto), métricas de EC2/RDS/CloudFront, métricas extraídas dos logs (erros, logins errados), alarmes e dashboard. |
 | **SNS** | Entrega os alarmes por e-mail para a equipe. |
-| **Elastic IP** | O Learner Lab desliga a EC2 ao fim da sessão; o IP fixo mantém o destino do API Gateway e o secret `EC2_HOST` do GitHub válidos. |
+| **Elastic IP** | O Learner Lab desliga a EC2 ao fim da sessão; o IP fixo mantém a origem do CloudFront e o secret `EC2_HOST` do GitHub válidos. |
 
 ### Organização dos recursos
 
@@ -360,7 +360,7 @@ Tudo segue `<projeto>-<ambiente>-<recurso>` (`dre-dev-app`, `dre-dev-mysql`, `dr
 
 1. No Learner Lab, **Start Lab** e abrir o console (região **us-east-1**).
 2. **CloudFormation → Create stack → Upload** `infra/cloudformation.yaml`. Nome: `dre-dev`. Parâmetros: `Environment=dev`, `KeyName=vockey`, `AlertEmail=<e-mail da equipe>` (o resto já vem certo).
-3. Esperar `CREATE_COMPLETE` (~15 min: o RDS é o mais lento). A EC2 instala Docker, clona o repositório e roda `scripts/deploy.sh` sozinha; o `cfn-signal` só confirma quando o `/health` fica UP.
+3. Esperar `CREATE_COMPLETE` (~15 min: RDS + CloudFront são os mais lentos). A EC2 instala Docker, clona o repositório e roda `scripts/deploy.sh` sozinha; o `cfn-signal` só confirma quando o `/health` fica UP.
 4. Confirmar a inscrição do SNS no e-mail recebido.
 5. Abrir a saída **AppUrl** → tela "Primeiro acesso" → criar o administrador.
 6. No GitHub (**Settings → Secrets and variables → Actions**):
@@ -406,9 +406,9 @@ O PR só deve ser aceito com o CI verde (Settings → Branches → *require stat
 
 **Secrets.** Nenhuma credencial no repositório: o `.env` está no `.gitignore` e o gitleaks roda em todo push. Na AWS a senha do RDS é gerada pelo Secrets Manager (`GenerateSecretString`), o CloudFormation passa para o RDS via `{{resolve:secretsmanager:...}}` e o `deploy.sh` monta o `.env` na EC2 com permissão `600`. No GitHub só ficam o IP e a chave SSH, como *encrypted secrets*. As senhas que aparecem em `docker-compose.yml` e no `ci.yml` são de bancos descartáveis locais/do runner.
 
-**Rede.** O usuário só entra pelo API Gateway (HTTPS). Como o API Gateway não tem lista de IPs fixa para liberar no Security Group, ele envia em toda requisição o cabeçalho `X-Origin-Verify` com um segredo gerado no Secrets Manager; a aplicação compara (`hash_equals`) e quem acessar o IP da EC2 direto recebe **403** (só o `/health` responde, sem dado sensível). O IP real do usuário chega no `X-Client-Ip` e o HTTPS no `X-Origin-Proto`, ambos **sobrescritos** pelo API Gateway — o usuário não consegue forjar, por isso `TRUST_PROXY=1` é seguro e o rate limit de login continua valendo por IP. RDS sem IP público, só aceita a EC2. Discos EBS e RDS criptografados, IMDSv2 obrigatório.
+**Rede.** EC2 aceita HTTP **somente do CloudFront** (prefix list gerenciada `com.amazonaws.global.cloudfront.origin-facing`) — por isso `TRUST_PROXY=1` é seguro (ninguém consegue forjar o `X-Forwarded-For` direto na EC2). RDS sem IP público, só aceita a EC2. Discos EBS e RDS criptografados, IMDSv2 obrigatório.
 
-**Aplicação.** O que já existia continua: bcrypt, CSRF, rate limit e bloqueio por tentativas, cookie `httpOnly + SameSite=Strict + Secure` (agora reconhecendo o HTTPS do API Gateway), XSS escapado, `.htaccess` bloqueando `app/`, `storage/`, `.env`, `.sql` e as pastas novas (`infra/`, `scripts/`, `tests/`, `docker/`).
+**Aplicação.** O que já existia continua: bcrypt, CSRF, rate limit e bloqueio por tentativas, cookie `httpOnly + SameSite=Strict + Secure` (agora reconhecendo o HTTPS do CloudFront), XSS escapado, `.htaccess` bloqueando `app/`, `storage/`, `.env`, `.sql` e as pastas novas (`infra/`, `scripts/`, `tests/`, `docker/`).
 
 **IAM.** No lab a EC2 usa o `LabInstanceProfile` (LabRole). Em produção ela teria uma role própria só com o necessário — a policy pronta está em [`docs/aws/iam-producao.json`](docs/aws/iam-producao.json):
 
@@ -444,10 +444,9 @@ fields @timestamp, level, msg, path | filter level = "ERROR" | sort @timestamp d
 | `dre-dev-ec2-cpu` / `dre-dev-rds-cpu` | CPU > 80% por 10 min |
 | `dre-dev-ec2-status` | status check da instância falhando |
 | `dre-dev-rds-disco` | menos de 2 GB livres no banco |
-| `dre-dev-api-5xx` | 10+ respostas 5xx no API Gateway em 5 min |
-| `dre-dev-api-latencia` | latência p95 acima de 2 s por 10 min |
+| `dre-dev-cdn-5xx` | mais de 5% das respostas com erro 5xx |
 
-O dashboard mostra requisições, erros 4xx/5xx e latência p95 (API Gateway), CPU EC2 × RDS, conexões do banco e os últimos WARN/ERROR.
+O dashboard mostra requisições, taxa de erro 4xx/5xx e latência (CloudFront), CPU EC2 × RDS, conexões do banco e os últimos WARN/ERROR.
 
 ## Backup
 
@@ -510,13 +509,13 @@ Histórico de deploys em `/opt/dre/state/history.log` e nas tags `deploy-*` do G
 | Usuários | Comportamento | O que muda |
 |---|---|---|
 | **100** | Folgado. Teste de carga feito com 100 usuários (ver `docs/testes/`). | nada |
-| **1.000** | EC2 t3.small e RDS micro ainda dão conta (uso típico de sistema financeiro interno: poucas requisições por usuário). O throttling do API Gateway segura rajadas. | subir para t3.medium / db.t3.small se o alarme de CPU tocar (troca de parâmetro na stack) |
+| **1.000** | EC2 t3.small e RDS micro ainda dão conta (uso típico de sistema financeiro interno: poucas requisições por usuário). CloudFront absorve os estáticos. | subir para t3.medium / db.t3.small se o alarme de CPU tocar (troca de parâmetro na stack) |
 | **10.000** | **Gargalo: uma EC2 só** (ponto único de falha) e sessões + uploads no disco local impedem ter várias. | uploads/comprovantes → S3 · sessões → tabela no MySQL ou ElastiCache Redis · **ALB + Auto Scaling Group** (2+ EC2 em AZs diferentes) · RDS Multi-AZ |
-| **100.000** | Banco vira o gargalo (relatórios DRE pesados). | ECS Fargate com auto scaling · **Aurora MySQL** com réplicas de leitura para relatórios · cache dos relatórios (Redis) · CloudFront + AWS WAF na frente |
+| **100.000** | Banco vira o gargalo (relatórios DRE pesados). | ECS Fargate com auto scaling · **Aurora MySQL** com réplicas de leitura para relatórios · cache dos relatórios (Redis) · AWS WAF no CloudFront |
 
-**Escala sozinho hoje:** API Gateway, S3, CloudWatch, Secrets Manager e o *storage* do RDS (autoscaling até 100 GB). **Não escala sozinho:** EC2 (vertical, manual) e CPU/memória do RDS.
+**Escala sozinho hoje:** CloudFront, S3, CloudWatch, Secrets Manager e o *storage* do RDS (autoscaling até 100 GB). **Não escala sozinho:** EC2 (vertical, manual) e CPU/memória do RDS.
 
-**Teste de carga:** `k6 run -e BASE_URL=https://<id>.execute-api.us-east-1.amazonaws.com tests/load/k6.js` (ou workflow **Teste de carga**). Rampa até 100 usuários virtuais; metas: erro < 1%, p95 < 800 ms (health < 300 ms).
+**Teste de carga:** `k6 run -e BASE_URL=https://<id>.cloudfront.net tests/load/k6.js` (ou workflow **Teste de carga**). Rampa até 100 usuários virtuais; metas: erro < 1%, p95 < 800 ms (health < 300 ms).
 
 ## Custos
 
@@ -530,7 +529,7 @@ Cenário: 10.000 usuários/mês · 100.000 chamadas de API · 500.000 operaçõe
 | RDS MySQL | db.t3.micro Single-AZ + 20 GB gp3 (backup de até 20 GB incluso) | ~15 |
 | IPv4 público (Elastic IP) | 1 IP 24×7 | ~3,60 |
 | CloudWatch | ~2 GB de logs, 8 alarmes, 2 métricas custom | ~3 |
-| API Gateway (HTTP API) | ~1 M requisições (US$ 1/milhão) + ~10 GB de saída | ~2 |
+| CloudFront | ~10 GB de saída + ~1 M requisições | ~2 |
 | S3 | ~10 GB de backups + requisições | ~0,30 |
 | Secrets Manager | 1 segredo | 0,40 |
 | SNS | e-mails de alarme | ~0 |
@@ -547,8 +546,7 @@ Cenário: 10.000 usuários/mês · 100.000 chamadas de API · 500.000 operaçõe
 | **Acesso ao servidor** | porta 22 aberta (só chave) porque os IPs do GitHub mudam | sem SSM Session Manager configurável | sem porta 22: **SSM Session Manager** |
 | **Disponibilidade** | lab desliga EC2/RDS ao fim da sessão; ao reiniciar o Docker sobe o app sozinho e o Elastic IP mantém o endereço | sessão limitada | 24×7, ALB + 2 AZs, RDS Multi-AZ |
 | **Ambientes** | só `dev` | orçamento/limites do lab | stacks independentes `dev`, `hml`, `prod` (idealmente em contas separadas via AWS Organizations) |
-| **CDN / HTTPS** | API Gateway com certificado da AWS (`*.execute-api.amazonaws.com`) | **o lab nega `cloudfront:CreateDistribution`** (erro 403 ao criar a stack) e não há Route 53/domínio | **CloudFront** na frente (cache dos estáticos, SG liberando só o prefix list do CloudFront em vez do segredo de origem) + domínio no Route 53 + certificado ACM + AWS WAF |
-| **Uploads** | arquivos de até **10 MB** pela internet | limite fixo de payload do API Gateway HTTP API | CloudFront aceita os 20 MB que o sistema permite (ou upload direto para o S3 com URL pré-assinada) |
+| **HTTPS / domínio** | certificado padrão `*.cloudfront.net` | sem Route 53 / domínio | domínio próprio no Route 53 + certificado ACM + AWS WAF |
 | **Secrets** | Secrets Manager sem rotação | rotação usa Lambda com role própria | rotação automática a cada 30 dias |
 | **Backup** | backup automático do RDS + script de dump/sync no S3 | AWS Backup e réplica entre regiões limitados | **AWS Backup** com plano centralizado e cópia para outra região (DR) |
 | **Logs do RDS** | não exportados | exportar exige role de serviço | `error` e `slowquery` exportados para o CloudWatch, Performance Insights |
@@ -561,7 +559,7 @@ RPO (quanto dado pode perder): **≤ 5 min** pelo point-in-time do RDS, **24 h**
 ## ✅ Checklist de entrega
 
 - [x] Aplicação na AWS (EC2 + RDS, nada depende de PC de integrante)
-- [x] HTTPS (API Gateway)
+- [x] HTTPS (CloudFront)
 - [x] Código no GitHub, sem credenciais (gitleaks no CI)
 - [x] CI (lint, testes, integração com MySQL, build Docker)
 - [x] CD automático via GitHub Actions (+ limitação documentada)

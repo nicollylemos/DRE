@@ -24,7 +24,7 @@ Antes de entregar, refazer no [AWS Pricing Calculator](https://calculator.aws/) 
 | RDS db.t3.micro MySQL Single-AZ | 730 h × ~0,017 | 12,41 |
 | RDS storage gp3 20 GB | 20 × ~0,115 | 2,30 |
 | RDS backup (≤ tamanho do banco) | incluso | 0,00 |
-| API Gateway HTTP API | ~1 M req × US$ 1/milhão + ~10 GB saída × 0,09 | ~1,90 |
+| CloudFront | ~10 GB × 0,085 + ~1 M req HTTPS × 0,01/10k | ~1,85 |
 | S3 backups | ~10 GB × 0,023 + requisições | ~0,30 |
 | CloudWatch Logs | ~2 GB ingestão × 0,50 + armazenamento | ~1,05 |
 | CloudWatch alarmes | 8 × 0,10 | 0,80 |

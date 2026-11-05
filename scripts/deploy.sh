@@ -34,10 +34,7 @@ APP_TZ=America/Sao_Paulo
 TRUST_PROXY=1
 ENV
 umask 022
-ORIGIN_SECRET="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
-  --secret-id "$ORIGIN_SECRET_ARN" --query SecretString --output text)"
-echo "ORIGIN_SECRET=$ORIGIN_SECRET" >> "$APP_DIR/.env"
-unset SECRET ORIGIN_SECRET
+unset SECRET
 
 # pastas persistentes (fora do container) com dono www-data (uid 33)
 mkdir -p "$DATA_DIR"/uploads/{documentos,fornecedores,parceiros,perfil} \
