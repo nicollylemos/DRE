@@ -527,6 +527,8 @@ Rodado pelo workflow **Teste de carga** contra a URL pública (API Gateway → E
 
 **Leitura.** No uso normal o sistema responde em ~80 ms na maioria das requisições e não teve nenhum erro. No estresse ele também não derrubou nenhuma requisição (zero 429 e zero 5xx), mas a vazão travou em ~37 req/s: a partir daí as requisições entram em fila e o p95 sobe para ~4,6 s. O gargalo é a **EC2 única e pequena** (t3.small, que além disso é *burstable* e perde desempenho quando os créditos de CPU acabam — num teste repetido logo depois de outro a latência piorou). Isso confirma a análise acima: o próximo passo de escala é **ALB + Auto Scaling Group** com 2+ instâncias (o que exige tirar sessões e uploads do disco local) ou, no curto prazo, uma instância maior não-burstable (ex.: m7i.large).
 
+**Deploy durante o teste.** Uma rodada extra do cenário carga coincidiu com um deploy automático (tag `deploy-dev-20261105-200929`, no meio do teste): 223 requisições (4,9%) voltaram 5xx — inclusive o CSS estático — o que corresponde a ~7 s de indisponibilidade enquanto o container era trocado. Com uma EC2 só, **todo deploy causa alguns segundos fora do ar**. Em produção: deploy **blue/green** (ou rolling) com 2+ instâncias atrás de um ALB, onde o tráfego só muda depois que a versão nova passa no health check.
+
 Rodar de novo: Actions → **Teste de carga** → `cenario` = `carga` ou `estresse`, ou `k6 run -e BASE_URL=<AppUrl> -e CENARIO=carga tests/load/k6.js`.
 
 ## Custos
