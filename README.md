@@ -302,7 +302,9 @@ DRE-php/
 # ☁️ AWS — implantação em produção
 
 > Projeto Integrador de Computação em Nuvem — FATEC Sorocaba (ADS) · implantado no **AWS Academy Learner Lab**.
-> Detalhes extras em [`docs/aws/`](docs/aws/).
+> Integrantes do grupo: passo a passo para hospedar na sua AWS em [`docs/aws/GUIA-GRUPO.md`](docs/aws/GUIA-GRUPO.md).
+>
+> Documento do trabalho (formato FATEC): [`docs/aws/IMPLANTACAO_AWS_DRE.pdf`](docs/aws/IMPLANTACAO_AWS_DRE.pdf) · detalhes extras em [`docs/aws/`](docs/aws/).
 
 ## Projeto
 
@@ -551,7 +553,7 @@ Cenário: 10.000 usuários/mês · 100.000 chamadas de API · 500.000 operaçõe
 | SNS | e-mails de alarme | ~0 |
 | **Total** | | **≈ US$ 43/mês** |
 
-**Conferido no AWS Pricing Calculator:** **US$ 50,28/mês** com o RDS em Multi-AZ (configuração de produção) — detalhes em [`docs/aws/custos.md`](docs/aws/custos.md).
+**Conferido no [AWS Pricing Calculator](https://calculator.aws/#/estimate?id=f574f4eff1fce70d47bed9cb6b2144a2a2c7e7c9):** **US$ 50,28/mês** com o RDS em Multi-AZ (configuração de produção) — detalhes em [`docs/aws/custos.md`](docs/aws/custos.md).
 
 **Maior custo:** EC2 seguido de perto pelo RDS (computação 24×7). Em produção real, com RDS Multi-AZ, o RDS dobra e vira o maior (~US$ 30). Para economizar: Savings Plans / instâncias reservadas (−30 a −40%), Graviton (t4g), e o free tier no primeiro ano.
 

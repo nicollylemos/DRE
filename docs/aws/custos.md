@@ -1,7 +1,7 @@
 # Estimativa de custos — DRE na AWS (fora do Academy)
 
 Região **us-east-1**, preço sob demanda, **sem free tier**, valores aproximados de nov/2026.
-Antes de entregar, refazer no [AWS Pricing Calculator](https://calculator.aws/) e salvar o link público da estimativa aqui.
+Conferido no AWS Pricing Calculator — ver seção no final.
 
 ## Cenário
 
@@ -42,7 +42,7 @@ Antes de entregar, refazer no [AWS Pricing Calculator](https://calculator.aws/) 
 
 ## Conferência no AWS Pricing Calculator (05/11/2026)
 
-Mesma arquitetura montada no [AWS Pricing Calculator](https://calculator.aws/), us-east-1, sob demanda:
+Mesma arquitetura montada no AWS Pricing Calculator, us-east-1, sob demanda — **[estimativa pública](https://calculator.aws/#/estimate?id=f574f4eff1fce70d47bed9cb6b2144a2a2c7e7c9)**:
 
 | Serviço | Configuração | US$/mês |
 |---|---|---|
