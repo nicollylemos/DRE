@@ -39,3 +39,21 @@ Antes de entregar, refazer no [AWS Pricing Calculator](https://calculator.aws/) 
 - **Maior custo:** a computação ligada 24×7 — EC2 (~US$ 19 com disco e monitoramento) e RDS (~US$ 15). As 100 mil chamadas de API e as 500 mil operações no banco quase não pesam: não são cobradas por requisição nessa arquitetura.
 - **Produção com alta disponibilidade** (ALB + 2 EC2 + RDS Multi-AZ): ~US$ 16 do ALB + EC2 em dobro + RDS em dobro ≈ **US$ 90–100/mês**.
 - **Como reduzir:** Savings Plan de 1 ano (−30% a −40%), instâncias Graviton (t4g / db.t4g, −20%), desligar HML fora do horário, retenção menor de logs.
+
+## Conferência no AWS Pricing Calculator (05/11/2026)
+
+Mesma arquitetura montada no [AWS Pricing Calculator](https://calculator.aws/), us-east-1, sob demanda:
+
+| Serviço | Configuração | US$/mês |
+|---|---|---|
+| Amazon EC2 | 1× t3.small Linux, uso constante | 15,18 |
+| Amazon RDS for MySQL | db.t3.micro **Multi-AZ** + 20 GB gp3 | 29,42 |
+| Amazon API Gateway | HTTP API, 1 milhão de requisições | 1,00 |
+| Amazon S3 | 10 GB S3 Standard | 0,23 |
+| AWS Secrets Manager | 2 segredos (senha do banco + segredo de origem) | 0,80 |
+| Amazon VPC | 1 IPv4 público (Elastic IP) 730 h | 3,65 |
+| **Total** | | **50,28/mês · 603,36 em 12 meses** |
+
+**Diferença para a conta acima.** Na calculadora o RDS ficou **Multi-AZ** (réplica em espera em outra zona), que é a configuração de **produção** — por isso ele dobra (~29 em vez de ~15) e vira o **serviço mais caro**. No ambiente `dev` do lab o template usa Single-AZ (Multi-AZ só quando `Environment=prod`). A calculadora não inclui o CloudWatch (~3 US$) nem o disco EBS da EC2 (~1,60 US$).
+
+**Conclusão:** entre **US$ 40 (dev, Single-AZ)** e **US$ 55 (prod, Multi-AZ + CloudWatch + EBS)** por mês. O custo é quase todo computação ligada 24×7 (EC2 + RDS); requisições e armazenamento quase não pesam.

@@ -551,6 +551,8 @@ Cenário: 10.000 usuários/mês · 100.000 chamadas de API · 500.000 operaçõe
 | SNS | e-mails de alarme | ~0 |
 | **Total** | | **≈ US$ 43/mês** |
 
+**Conferido no AWS Pricing Calculator:** **US$ 50,28/mês** com o RDS em Multi-AZ (configuração de produção) — detalhes em [`docs/aws/custos.md`](docs/aws/custos.md).
+
 **Maior custo:** EC2 seguido de perto pelo RDS (computação 24×7). Em produção real, com RDS Multi-AZ, o RDS dobra e vira o maior (~US$ 30). Para economizar: Savings Plans / instâncias reservadas (−30 a −40%), Graviton (t4g), e o free tier no primeiro ano.
 
 ## 🎓 AWS Academy × Produção
@@ -585,6 +587,7 @@ Prints em [`docs/aws/prints/`](docs/aws/prints/) (dados pessoais do cliente de t
 | 06 | [Rollback pelo GitHub Actions](docs/aws/prints/06-rollback-sucesso.png) | Rollback |
 | 07 | [Dashboard `dre-dev` no CloudWatch](docs/aws/prints/07-cloudwatch-dashboard-dre-dev.png) | Monitoramento |
 | 08 | [Alarme `dre-dev-api-5xx` disparado sozinho](docs/aws/prints/08-cloudwatch-alarme-api-5xx-disparado.png) pelos erros do deploy durante o teste de carga | Alarmes |
+| 18 | [Logs no CloudWatch Logs Insights](docs/aws/prints/18-cloudwatch-logs-insights.png): INFO (logout), WARN (logins errados) e o bloqueio de acesso direto à EC2 sem o segredo de origem | Logs · Segurança |
 | 09 | [Teste de estresse com k6](docs/aws/prints/09-teste-estresse-k6.png) | Teste de carga |
 | 10 → 15 | Restore: [dado criado](docs/aws/prints/10-restore-1-cliente-cadastrado.png) → [backup no S3](docs/aws/prints/11-restore-2-backup-s3.png) → [falha simulada](docs/aws/prints/12-restore-3-falha-simulada.png) → [dado apagado](docs/aws/prints/13-restore-4-cliente-apagado.png) → [restore](docs/aws/prints/14-restore-5-restore-banco.png) → [dado recuperado](docs/aws/prints/15-restore-6-cliente-recuperado.png) | Backup · Restore testado |
 | 16 · 17 | [Secrets](docs/aws/prints/16-github-secrets.png) e [variables](docs/aws/prints/17-github-variables.png) do GitHub (só nomes, valores criptografados) | Secrets fora do código |
