@@ -10,18 +10,62 @@ PHP puro, **sem Composer e sem `npm install`**: Excel, PDF e leitura de planilha
 
 ## Sumário
 
-1. [Requisitos](#-requisitos)
-2. [Como rodar no seu PC com XAMPP (Windows)](#-como-rodar-no-seu-pc-com-xampp-windows)
-3. [Como rodar só com o PHP (sem XAMPP)](#-como-rodar-só-com-o-php-sem-xampp)
-4. [Como publicar na hospedagem](#-como-publicar-na-hospedagem-hostinger-locaweb-hostgator)
-5. [Primeiro acesso](#-primeiro-acesso)
-6. [Atualizando da versão 2.x](#-atualizando-da-versão-2x)
-7. [Telas](#-telas)
-8. [Usuários e níveis de acesso](#-usuários-e-níveis-de-acesso)
-9. [Importação de planilhas](#-importação-de-planilhas)
-10. [Estrutura MVC](#-estrutura-mvc)
-11. [Problemas comuns](#-problemas-comuns)
-12. [☁️ AWS — implantação em produção (PI Computação em Nuvem)](#️-aws--implantação-em-produção)
+1. [Requisitos funcionais e não funcionais](#-requisitos-funcionais-e-não-funcionais)
+2. [Requisitos](#-requisitos)
+3. [Como rodar no seu PC com XAMPP (Windows)](#-como-rodar-no-seu-pc-com-xampp-windows)
+4. [Como rodar só com o PHP (sem XAMPP)](#-como-rodar-só-com-o-php-sem-xampp)
+5. [Como publicar na hospedagem](#-como-publicar-na-hospedagem-hostinger-locaweb-hostgator)
+6. [Primeiro acesso](#-primeiro-acesso)
+7. [Atualizando da versão 2.x](#-atualizando-da-versão-2x)
+8. [Telas](#-telas)
+9. [Usuários e níveis de acesso](#-usuários-e-níveis-de-acesso)
+10. [Importação de planilhas](#-importação-de-planilhas)
+11. [Estrutura MVC](#-estrutura-mvc)
+12. [Problemas comuns](#-problemas-comuns)
+13. [☁️ AWS — implantação em produção (PI Computação em Nuvem)](#️-aws--implantação-em-produção)
+
+---
+
+## 📋 Requisitos funcionais e não funcionais
+
+### Requisitos funcionais
+
+| ID | Requisito |
+|---|---|
+| RF01 | O sistema deve permitir login com usuário e senha, com opção "manter conectado" e logout. Com o banco vazio, o primeiro acesso cria o administrador. |
+| RF02 | O administrador deve poder criar, editar, desativar e desbloquear usuários e redefinir a senha deles (senha provisória, trocada no primeiro login). |
+| RF03 | O sistema deve ter níveis de acesso configuráveis, definindo para cada tela **sem acesso**, **ver** ou **editar**. |
+| RF04 | Cada usuário deve poder editar o próprio perfil e trocar a própria senha. No primeiro acesso, deve aceitar o Termo de uso e a Política de privacidade (LGPD). |
+| RF05 | O sistema deve permitir cadastrar, editar, excluir, dar baixa e reabrir receitas e despesas, com categoria, conta, forma de pagamento, centro de custo, vencimento e filtros de busca. |
+| RF06 | O sistema deve permitir transferências entre caixas/contas bancárias. |
+| RF07 | O sistema deve gerar o DRE mês a mês (receita bruta → deduções/MDR → receita líquida → despesas → resultado), com AV%, AH% e comparação com o ano anterior, em regime de competência ou caixa, agrupado por categoria, grupo/conta ou centro de custo. |
+| RF08 | O sistema deve mostrar um dashboard com KPIs do exercício, receitas × despesas por mês, próximos vencimentos, saldo por conta e despesas por categoria. |
+| RF09 | O sistema deve mostrar o fluxo de caixa dia a dia, realizado × previsto, por caixa. |
+| RF10 | O sistema deve ter um calendário de contas a pagar e a receber, com filtros (vencidos, quitados etc.) e baixa com um clique. |
+| RF11 | O sistema deve permitir anexar notas fiscais (PDF e XML), vinculá-las a lançamentos e ler o XML (NF-e, NFC-e e NFS-e) para preencher o lançamento automaticamente, inclusive várias notas de uma vez. |
+| RF12 | O sistema deve manter cadastros de clientes, fornecedores e parceiros, com validação de CPF/CNPJ, consulta à Receita (BrasilAPI), contratos e aditivos. |
+| RF13 | O sistema deve manter os cadastros de apoio: categorias, caixas/bancos e formas de pagamento (com taxa MDR e opção de inativar). |
+| RF14 | O sistema deve importar lançamentos, clientes e fornecedores de planilhas `.xlsx`/`.csv` por um assistente (arquivo → colunas → conferência → importação), apontando erros e duplicados e permitindo desfazer a importação. |
+| RF15 | O sistema deve exportar os dados em Excel, CSV, XML e PDF, e o DRE em Excel e PDF. |
+| RF16 | O sistema deve registrar em log tudo o que é criado, alterado, apagado e importado, além dos logins (inclusive falhos), guardando cópia dos registros excluídos. |
+
+### Requisitos não funcionais
+
+| ID | Categoria | Requisito |
+|---|---|---|
+| RNF01 | Segurança | Senhas guardadas com bcrypt; token CSRF em toda ação; cookie de sessão `HttpOnly` + `SameSite=Strict` (+ `Secure` em HTTPS); saída escapada contra XSS. |
+| RNF02 | Segurança | 5 senhas erradas seguidas bloqueiam o usuário por 15 min, e 15 erros do mesmo IP em 10 min bloqueiam o IP. |
+| RNF03 | Segurança | As permissões são conferidas no servidor (a API recusa mesmo chamada direta), não só escondidas no menu. |
+| RNF04 | Privacidade | Atender à LGPD: termo de uso e política de privacidade com aceite registrado; senhas, tokens e cookies nunca aparecem nos logs. |
+| RNF05 | Desempenho | Com uso normal (até 30 usuários simultâneos), p95 abaixo de 800 ms e taxa de erro abaixo de 1% (medido com k6). |
+| RNF06 | Disponibilidade | Endpoint `/health` que testa o banco, usado no deploy, no Docker e no monitoramento; rollback automático se a versão nova não subir. |
+| RNF07 | Confiabilidade | A importação de planilhas roda numa transação só (tudo ou nada); backup diário do banco e dos arquivos, com restore testado. |
+| RNF08 | Usabilidade | Interface web em português, responsiva, com menu recolhível e mensagens de erro claras. |
+| RNF09 | Manutenibilidade | Código em MVC com front controller e padrões de projeto (Strategy, Factory, Observer), testes unitários e CI. |
+| RNF10 | Portabilidade | Roda em XAMPP, hospedagem compartilhada com Apache/nginx, Docker e AWS (EC2 + RDS). Toda a configuração vem de variáveis de ambiente (`.env`). |
+| RNF11 | Banco de dados | MySQL 5.7+/8.x ou MariaDB 10.3+; as tabelas são criadas e atualizadas sozinhas, sem apagar dados. |
+| RNF12 | Observabilidade | Logs estruturados em JSON com níveis INFO, WARN e ERROR, centralizados no CloudWatch com alarmes. |
+| RNF13 | Limites | Upload de até 20 MB por arquivo; planilha de até 10 MB / 5.000 linhas. |
 
 ---
 
