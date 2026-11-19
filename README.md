@@ -370,7 +370,7 @@ flowchart TB
     GH[GitHub Actions<br/>CI + CD] -->|SSH deploy.sh| EC2
     subgraph VPC["VPC padrão — us-east-1"]
         CF -->|HTTP 80 + cabeçalho secreto<br/>X-Origin-Verify| EC2[EC2 t3.small · Amazon Linux 2023<br/>Docker: Apache + PHP 8.3<br/>dre-dev-app + Elastic IP]
-        EC2 -->|3306 — SG só da EC2| RDS[(RDS MySQL 8.0<br/>dre-dev-mysql<br/>privado · criptografado<br/>backup automático 7 dias)]
+        EC2 -->|3306 — SG só da EC2| RDS[(RDS MySQL 8.4<br/>dre-dev-mysql<br/>privado · criptografado<br/>backup automático 7 dias)]
         EC2 -.->|lê senha do banco<br/>e segredo de origem| SM[Secrets Manager<br/>dre-dev-db · dre-dev-origin]
         EC2 -->|dump diário + uploads| S3[(S3 dre-dev-backups<br/>versionado · criptografado)]
         EC2 -->|stdout/stderr do container| CWL[CloudWatch Logs<br/>/dre/dev/app]

@@ -157,7 +157,8 @@ Resources:
     Properties:
       DBInstanceIdentifier: !Sub ${ProjectName}-${Environment}-mysql
       Engine: mysql
-      EngineVersion: "8.0"
+      EngineVersion: "8.4"
+      EngineLifecycleSupport: open-source-rds-extended-support-disabled   # nunca cobrar Extended Support
       DBInstanceClass: !Ref DBInstanceClass
       AllocatedStorage: !Ref DBAllocatedStorage
       MaxAllocatedStorage: 100        # storage autoscaling
